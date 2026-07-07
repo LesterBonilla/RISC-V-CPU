@@ -20,5 +20,6 @@ module core (
 
 // Data memory
 // Instruction memory
+// Register file
     
 endmodule
