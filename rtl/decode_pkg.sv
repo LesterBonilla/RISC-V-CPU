@@ -80,13 +80,13 @@ package decode_pkg;
         STORE_WORD
     } store_op_e;
 
-    typedef enum logic [2:0] { 
-        IMM_SRC_I,
-        IMM_SRC_S,
-        IMM_SRC_U,
-        IMM_SRC_U,
-        IMM_SRC_B,
-        IMM_SRC_J
-    } imm_src_e;
+    // typedef enum logic [2:0] { 
+    //     IMM_SRC_I,
+    //     IMM_SRC_S,
+    //     IMM_SRC_U,
+    //     IMM_SRC_U,
+    //     IMM_SRC_B,
+    //     IMM_SRC_J
+    // } imm_src_e;
 
 endpackage

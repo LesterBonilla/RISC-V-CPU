@@ -53,9 +53,12 @@ module id_stage (
                 // Reg write true
                 // RegDest = Rd
                 // Set write back source to ALU result
+            // Ex stage
                 id_ex.alu_op    = alu_op_e'({funct7[5], funct3});
                 id_ex.alu_src_a = ALU_SRC_A_REG;
                 id_ex.alu_src_b = ALU_SRC_B_REG;
+
+            // WB stage
                 id_ex.wb_src    = WB_SRC_ALU;
                 id_ex.reg_write = 1'b1;
 
@@ -64,13 +67,29 @@ module id_stage (
                 // Set ALU op
                 // Set ALU sources to rs1 and immediate
                 // Set immediate_out to imm_S
-                // Consider shift amount
+                // Consider shift amount:
+                // Shift amount is encoded in imm_S and 0 extended. The ALU can extract the shift amount from this value.
             // Mem access:
                 // No write
             // Write back
                 // Reg write true
                 // RegDest = Rd
                 // Write back source is ALU result
+            // EX Stage
+                if (funct3 == ALU_SLL || funct3 == ALU_SRL) begin
+                    id_ex.alu_op = alu_op_e'({funct7[5], funct3});
+                end else begin
+                    id_ex.alu_op = alu_op_e'({1'b0, funct3});
+                end
+    
+                id_ex.alu_src_a     = ALU_SRC_A_REG;
+                id_ex.alu_src_b     = ALU_SRC_B_IMM;
+                id_ex.imm_extended  = imm_S;
+            
+            // WB Stage
+                id_ex.wb_src        = WB_SRC_ALU;
+                id_ex.reg_write     = 1'b1;
+
 
             OP_LUI:
             // Ex stage:

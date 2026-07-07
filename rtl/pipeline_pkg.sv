@@ -33,7 +33,6 @@ package pipeline_pkg;
         branch_op_e         branch_op;
         load_op_e           load_op;
         store_op_e          store_op;
-        imm_src_e           imm_src;
         target_adder_src_e  target_adder_src;
 
         // Data lines
