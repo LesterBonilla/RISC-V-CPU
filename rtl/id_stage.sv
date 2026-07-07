@@ -1,44 +1,42 @@
 import decode_pkg::*;
+import pipeline_pkg::*;
 
 module id_stage (
-    input logic [31:0] instruction,
+    input   if_id_reg_t     if_id,
 
-    output logic [4:0] rs2,
-    output logic [4:0] rs1,
-    output logic [4:0] rd,
-    output logic [31:0] imm_extended,
+    input   logic [31:0]    reg_data_1,
+    input   logic [31:0]    reg_data_2,
 
+    output  id_ex_reg_t     id_ex
 ); 
 
-    logic [6:0] funct7  = instruction[31:25];
-    logic [2:0] funct3  = instruction[14:12];
+    logic [6:0] funct7  = if_id.instruction[31:25];
+    logic [2:0] funct3  = if_id.instruction[14:12];
 
-    logic [31:0] imm_I  = {{20{instruction[31]}}, instruction[31:20]};
-    logic [31:0] imm_S  = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-    logic [31:0] imm_U  = {instruction[31:12], {12{1'b0}}};
-    logic [31:0] imm_B  = {{20{instruction[12]}}, instruction[7], instruction[30:25], instruction[11:8], 1'b0}
-    logic [31:0] imm_J  = {{12{instruction[31]}, instruction[19:12]}, instruction[20], instruction[30:25], instruction[24:21], 1'b0};
+    logic [31:0] imm_I  = {{20{if_id.instruction[31]}}, if_id.instruction[31:20]};
+    logic [31:0] imm_S  = {{20{if_id.instruction[31]}}, if_id.instruction[31:25], if_id.instruction[11:7]};
+    logic [31:0] imm_U  = {if_id.instruction[31:12], {12{1'b0}}};
+    logic [31:0] imm_B  = {{20{if_id.instruction[12]}}, if_id.instruction[7], if_id.instruction[30:25], if_id.instruction[11:8], 1'b0}
+    logic [31:0] imm_J  = {{12{if_id.instruction[31]}, if_id.instruction[19:12]}, if_id.instruction[20], if_id.instruction[30:25], if_id.instruction[24:21], 1'b0};
 
-    opcode_e opcode;
+    opcode_e opcode     = opcode_t'(if_id.instruction[6:0]);
 
-    // Control Signals
-    alu_op_e alu_op;
-    alu_src_a_e alu_src_a;
-    alu_src_b_e alu_src_b;
-    wb_src_e wb_src;
-    branch_op_e branch_op;
-    target_adder_src_e target_adder_src;
-    load_op_e load_op;
-    store_op_e store_op;
-    imm_src_e imm_src;
-
-    assign opcode = opcode_t'(instruction[6:0]);
-    assign rs2 = instruction[24:20];
-    assign rs1 = instruction[19:15];
-    assign rd  = instruction[11:7];
+    assign rs2          = if_id.instruction[24:20];
+    assign rs1          = if_id.instruction[19:15];
+    assign rd           = if_id.instruction[11:7];
 
 
     always_comb begin
+
+        // Default value to prevent latches
+        id_ex = '0;
+
+        // Values that aren't used this stage
+        id_ex.valid     = if_id.valid;
+        id_ex.pc        = if_id.pc;
+        id_ex.pc_plus4  = if_id.pc_plus;
+
+
         unique case (opcode)
             OP_REG_REG:   
             // Ex stage:

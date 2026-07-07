@@ -9,14 +9,19 @@ package pipeline_pkg;
     } fwd_sel_e;
 
     typedef struct packed {
+        logic               valid;
+
         // Data lines
-        logic [31:0]    instruction;
-        logic [31:0]    pc;
-        logic [31:0]    pc_plus4;
+        logic [31:0]        instruction;
+        logic [31:0]        pc;
+        logic [31:0]        pc_plus4;
+
 
     } if_id_reg_t;
 
     typedef struct packed {
+        logic               valid;
+
         // Control signals
         logic               reg_write;
         logic               jump;
