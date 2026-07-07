@@ -59,4 +59,32 @@ package decode_pkg;
         BGEU    
     } branch_op_e;
 
+    typedef enum logic { 
+        TARGET_SRC_PC,
+        TARGET_SRC_RS1
+    } target_adder_src_e;
+
+    typedef enum logic [1:0] { 
+        LD_BYTE,
+        LD_HALF,
+        LD_WORD,
+        LD_BYTE_UNSIGNED,
+        LD_HALF_UNSIGNED
+    } load_op_e;
+
+    typedef enum logic [1:0] { 
+        STORE_BYTE,
+        STORE_HALF,
+        STORE_WORD
+    } store_op_e;
+
+    typedef enum logic [2:0] { 
+        IMM_SRC_I,
+        IMM_SRC_S,
+        IMM_SRC_U,
+        IMM_SRC_U,
+        IMM_SRC_B,
+        IMM_SRC_J
+    } imm_src_e;
+
 endpackage

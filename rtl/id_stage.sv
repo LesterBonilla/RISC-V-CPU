@@ -21,6 +21,17 @@ module id_stage (
 
     opcode_e opcode;
 
+    // Control Signals
+    alu_op_e alu_op;
+    alu_src_a_e alu_src_a;
+    alu_src_b_e alu_src_b;
+    wb_src_e wb_src;
+    branch_op_e branch_op;
+    target_adder_src_e target_adder_src;
+    load_op_e load_op;
+    store_op_e store_op;
+    imm_src_e imm_src;
+
     assign opcode = opcode_t'(instruction[6:0]);
     assign rs2 = instruction[24:20];
     assign rs1 = instruction[19:15];
@@ -101,6 +112,46 @@ module id_stage (
             // Mem stage:
                 // Nothing
             // WB Stage:
+                // Nothing
+
+            OP_JALR:
+            // Ex stage:
+                // Use PC target adder
+                // ALU does nothing
+                // PC target adder source set to rs1 (post-forward value)
+                // PC source is set to target pc
+                // Hazard unit flushes previous stages
+            // Mem stage:
+                // Nothing
+            // WB stage:
+                // RegDest = Rd
+                // Reg write true
+                // Write back source is PC_PLUS4
+
+            OP_LOAD:
+            // Ex stage:
+                // ALU op is add
+                // ALU source A = rs1
+                // ALU source B = immediate
+                // Load op is set based on funct3
+            // Mem stage:
+                // Sign extend output of data memory based on load type
+            // WB stage:
+                // RegDest = Rd
+                // Reg write true
+                // Write back source is data memory
+
+            OP_STORE:
+            // Ex stage:
+                // Write data comes from rs2 post-forward value
+                // ALU OP is addition
+                // ALU source A = rs1 (post forward)
+                // ALU source B = immediate
+                // Store op is set based on funct3 (write mask)
+            // Mem stage:
+                // MemWrite is true
+                // Set write mask based on store op
+            // WB stage:
                 // Nothing
 
             
