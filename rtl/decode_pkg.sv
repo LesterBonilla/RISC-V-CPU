@@ -1,31 +1,33 @@
 package decode_pkg;
 
     typedef enum logic [6:0] { 
-        OP_LUI      = 7'b0110111;
-        OP_AUIPC    = 7'b0010111;
-        OP_JAL      = 7'b1101111;
-        OP_BRANCH   = 7'b1100011;
-        OP_JALR     = 7'b1100111;
-        OP_LOAD     = 7'b0000011;
-        OP_REG_IMM  = 7'b0010011;
-        OP_STORE    = 7'b0100011;
-        OP_REG_REG  = 7'b0110011;
-        OP_FENCE    = 7'b0001111;
-        OP_E_OP     = 7'b1110011;
+        OP_LUI      = 7'b0110111,
+        OP_AUIPC    = 7'b0010111,
+        OP_JAL      = 7'b1101111,
+        OP_BRANCH   = 7'b1100011,
+        OP_JALR     = 7'b1100111,
+        OP_LOAD     = 7'b0000011,
+        OP_REG_IMM  = 7'b0010011,
+        OP_STORE    = 7'b0100011,
+        OP_REG_REG  = 7'b0110011,
+        OP_FENCE    = 7'b0001111,
+        OP_E_OP     = 7'b1110011,
 
     } opcode_e;
 
+    // This matches with {funct7[5], funct3} to account for funct3 overlap between
+    // ADD/SUB and SRL/SRA
     typedef enum logic [3:0] { 
-        ALU_ADD,
-        ALU_SUB,
+        ALU_ADD, 
         ALU_SLL,
         ALU_SLT,
         ALU_SLTU,
         ALU_XOR,
-        ALU_SRL,
-        ALU_SRA,
+        ALU_SRL, 
         ALU_OR,
-        ALU_AND
+        ALU_AND,
+        ALU_SUB     = 4'b1000,
+        ALU_SRA     = 4'b1101
     } alu_op_e;
 
     typedef enum logic [1:0] {

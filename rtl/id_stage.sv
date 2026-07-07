@@ -10,6 +10,11 @@ module id_stage (
     output  id_ex_reg_t     id_ex
 ); 
 
+    opcode_e opcode     = opcode_t'(if_id.instruction[6:0]);
+
+    logic [4:0] rs1     = if_id.instruction[19:15];
+    logic [4:0] rs2     = if_id.instruction[24:20];
+    logic [4:0] rd      = if_id.instruction[11:7];
     logic [6:0] funct7  = if_id.instruction[31:25];
     logic [2:0] funct3  = if_id.instruction[14:12];
 
@@ -18,12 +23,6 @@ module id_stage (
     logic [31:0] imm_U  = {if_id.instruction[31:12], {12{1'b0}}};
     logic [31:0] imm_B  = {{20{if_id.instruction[12]}}, if_id.instruction[7], if_id.instruction[30:25], if_id.instruction[11:8], 1'b0}
     logic [31:0] imm_J  = {{12{if_id.instruction[31]}, if_id.instruction[19:12]}, if_id.instruction[20], if_id.instruction[30:25], if_id.instruction[24:21], 1'b0};
-
-    opcode_e opcode     = opcode_t'(if_id.instruction[6:0]);
-
-    assign rs2          = if_id.instruction[24:20];
-    assign rs1          = if_id.instruction[19:15];
-    assign rd           = if_id.instruction[11:7];
 
 
     always_comb begin
@@ -36,6 +35,12 @@ module id_stage (
         id_ex.pc        = if_id.pc;
         id_ex.pc_plus4  = if_id.pc_plus;
 
+        // Pass these along independent of instruction
+        id_ex.rs1           = rs1;
+        id_ex.rs2           = rs2;
+        id_ex.rd            = rd;
+        id_ex.reg_data_1    = reg_data_1;
+        id_ex.reg_data_2    = reg_data_2;
 
         unique case (opcode)
             OP_REG_REG:   
@@ -48,6 +53,11 @@ module id_stage (
                 // Reg write true
                 // RegDest = Rd
                 // Set write back source to ALU result
+                id_ex.alu_op    = alu_op_e'({funct7[5], funct3});
+                id_ex.alu_src_a = ALU_SRC_A_REG;
+                id_ex.alu_src_b = ALU_SRC_B_REG;
+                id_ex.wb_src    = WB_SRC_ALU;
+                id_ex.reg_write = 1'b1;
 
             OP_REG_IMM:
             // Ex stage:
