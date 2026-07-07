@@ -48,4 +48,37 @@ package pipeline_pkg;
 
     } id_ex_reg_t;
 
+    typedef struct packed {
+        logic               valid;
+
+        // Control signals
+        logic               reg_write;
+        wb_src_e            wb_src;
+        logic               mem_write;
+        load_op_e           load_op;
+        store_op_e          store_op;
+
+        // Data lines
+        logic [31:0]        alu_result;
+        logic [31:0]        write_data;
+        logic [31:0]        pc_plus4;
+        logic [4:0]         rd;
+
+    } ex_mem_reg_t;
+
+    typedef struct packed {
+        logic               valid;
+        
+        // Control signals
+        logic               reg_write;
+        wb_src_e            wb_src;
+
+        // Data lines
+        logic [31:0]        alu_result;
+        logic [31:0]        mem_data;
+        logic [31:0]        pc_plus4;
+        logic [4:0]         rd;
+
+    } mem_wb_reg_t;
+
 endpackage
