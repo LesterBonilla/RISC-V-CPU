@@ -40,12 +40,6 @@ package decode_pkg;
     } alu_src_b_e;
 
     typedef enum logic [1:0] { 
-        FWD_NONE,
-        FWD_MEM,
-        FWD_WB
-    } fwd_sel_e;
-
-    typedef enum logic [1:0] { 
         WB_SRC_ALU,
         WB_SRC_PC_PLUS4,
         WB_SRC_MEM
@@ -55,5 +49,14 @@ package decode_pkg;
         PC_SRC_PC_PLUS4,
         PC_SRC_TARGET
     } pc_src_e;
+
+    typedef enum logic [2:0] { 
+        BEQ,
+        BNE,
+        BLT,
+        BGE,
+        BLTU,
+        BGEU    
+    } branch_op_e;
 
 endpackage
