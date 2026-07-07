@@ -24,6 +24,7 @@ package pipeline_pkg;
 
         // Control signals
         logic               reg_write;
+        logic               mem_write;
         logic               jump;
         logic               branch;
         alu_op_e            alu_op;
@@ -33,7 +34,7 @@ package pipeline_pkg;
         branch_op_e         branch_op;
         load_op_e           load_op;
         store_op_e          store_op;
-        target_adder_src_e  target_adder_src;
+        pc_target_src_e     pc_target_src;
 
         // Data lines
         logic [4:0]         rs1;
