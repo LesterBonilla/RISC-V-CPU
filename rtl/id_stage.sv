@@ -31,9 +31,9 @@ module id_stage (
         id_ex = '0;
 
         // Values that aren't used this stage
-        id_ex.valid     = if_id.valid;
-        id_ex.pc        = if_id.pc;
-        id_ex.pc_plus4  = if_id.pc_plus;
+        id_ex.valid         = if_id.valid;
+        id_ex.pc            = if_id.pc;
+        id_ex.pc_plus4      = if_id.pc_plus;
 
         // Pass these along independent of instruction
         id_ex.rs1           = rs1;
@@ -84,7 +84,7 @@ module id_stage (
     
                 id_ex.alu_src_a     = ALU_SRC_A_REG;
                 id_ex.alu_src_b     = ALU_SRC_B_IMM;
-                id_ex.imm_extended  = imm_S;
+                id_ex.imm_extended  = imm_I;
             
             // WB Stage
                 id_ex.wb_src        = WB_SRC_ALU;
@@ -102,6 +102,13 @@ module id_stage (
                 // RegDest = Rd
                 // Reg write true
                 // Write back source is ALU result
+                id_ex.alu_src_a     = ALU_SRC_A_REG;
+                id_ex.alu_src_b     = ALU_SRC_B_IMM;
+                id_ex.imm_extended  = imm_U;
+                id_ex.alu_op        = ALU_ADD;
+
+                id_ex.wb_src        = WB_SRC_ALU;
+                id_ex.reg_write     = 1'b1;
 
             OP_AUIPC:
             // Ex stage:
@@ -114,12 +121,19 @@ module id_stage (
                 // RegDest = Rd
                 // Reg write true
                 // Write back source is ALU result
+                id_ex.alu_src_a     = ALU_SRC_A_PC;
+                id_ex.alu_src_b     = ALU_SRC_B_IMM;
+                id_ex.imm_extended  = imm_U;
+                id_ex.alu_op        = ALU_ADD;
+
+                id_ex.reg_write     = 1'b1;
+                id_ex.wb_src        = WB_SRC_ALU;
 
             OP_JAL:
             // Ex stage:
                 // Jump is true
                 // ALU does nothing
-                // PC source is set to target pc
+                // PC source is set to target pc (by ex stage)
                 // Hazard unit flushes previous stages
             // Mem stage:
                 // Nothing
@@ -127,6 +141,14 @@ module id_stage (
                 // RegDest = Rd
                 // Reg write true
                 // Write back source is PC_PLUS4
+                id_ex.imm_extended  = imm_J;
+
+                id_ex.jump          = 1'b1;
+                id_ex.pc_target_src = TARGET_SRC_PC;
+
+                id_ex.reg_write     = 1'b1;
+                id_ex.wb_src        = WB_SRC_PC_PLUS4; 
+                
 
             OP_BRANCH:
             // Ex stage:
@@ -140,6 +162,14 @@ module id_stage (
                 // Nothing
             // WB Stage:
                 // Nothing
+                id_ex.imm_extended  = imm_B;
+
+                id_ex.branch        = 1'b1;
+                id_ex.alu_src_a     = ALU_SRC_A_REG;
+                id_ex.alu_src_b     = ALU_SRC_B_REG;
+                id_ex.alu_op        = ALU_SUB;
+                id_ex.branch_op     = branch_op_e'(funct3);
+                id_ex.pc_target_src = TARGET_SRC_PC;
 
             OP_JALR:
             // Ex stage:
@@ -148,12 +178,19 @@ module id_stage (
                 // PC target adder source set to rs1 (post-forward value)
                 // PC source is set to target pc
                 // Hazard unit flushes previous stages
+                // Imm source is imm_J
             // Mem stage:
                 // Nothing
             // WB stage:
                 // RegDest = Rd
                 // Reg write true
                 // Write back source is PC_PLUS4
+                id_ex.imm_extended  = imm_I;
+
+                id_ex.pc_target_src = TARGET_SRC_RS1;
+
+                id_ex.reg_write     = 1'b1;
+                id_ex.wb_src        = WB_SRC_PC_PLUS4;
 
             OP_LOAD:
             // Ex stage:
@@ -161,12 +198,23 @@ module id_stage (
                 // ALU source A = rs1
                 // ALU source B = immediate
                 // Load op is set based on funct3
+                // IMM source is imm_I
             // Mem stage:
                 // Sign extend output of data memory based on load type
             // WB stage:
                 // RegDest = Rd
                 // Reg write true
                 // Write back source is data memory
+                id_ex.imm_extended  = imm_I;
+
+                id_ex.alu_op        = ALU_ADD;
+                id_ex.alu_src_a     = ALU_SRC_A_REG;
+                id_ex.alu_src_b     = ALU_SRC_B_IMM;
+                
+                id_ex.load_op       = load_op_e'(funct3);
+
+                id_ex.reg_write     = 1'b1;
+                id_ex.wb_src        = WB_SRC_MEM;
 
             OP_STORE:
             // Ex stage:
@@ -180,6 +228,14 @@ module id_stage (
                 // Set write mask based on store op
             // WB stage:
                 // Nothing
+                id_ex.imm_extended  = imm_S;
+
+                id_ex.alu_op        = ALU_ADD;
+                id_ex.alu_src_a     = ALU_SRC_A_REG;
+                id_ex.alu_src_b     = ALU_SRC_B_IMM;
+
+                id_ex.mem_write     = 1'b1;
+                id_ex.store_op      = store_op_e'(funct3[1:0]);
 
             
 
