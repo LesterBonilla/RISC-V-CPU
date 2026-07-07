@@ -57,6 +57,7 @@ module id_stage (
             // Ex stage:
                 // ALU source A = 0
                 // ALU source B = immediate
+                // ALU OP = Addition
             // Mem access:
                 // Nothing
             // Write back:
@@ -64,6 +65,45 @@ module id_stage (
                 // Reg write true
                 // Write back source is ALU result
 
+            OP_AUIPC:
+            // Ex stage:
+                // ALU source A = PC
+                // ALU source B = immediate
+                // ALU OP = Addition
+            // Mem stage:
+                // Nothing
+            // Write back:
+                // RegDest = Rd
+                // Reg write true
+                // Write back source is ALU result
+
+            OP_JAL:
+            // Ex stage:
+                // Jump is true
+                // ALU does nothing
+                // PC source is set to target pc
+                // Hazard unit flushes previous stages
+            // Mem stage:
+                // Nothing
+            // WB stage:
+                // RegDest = Rd
+                // Reg write true
+                // Write back source is PC_PLUS4
+
+            OP_BRANCH:
+            // Ex stage:
+                // ALU source A = rs1
+                // ALU source B = rs2
+                // Branch is true
+                // ALU OP = Subtraction
+                // If taken, a signal from EX direct to IF selects PC
+                // If taken, flushes previous stages
+            // Mem stage:
+                // Nothing
+            // WB Stage:
+                // Nothing
+
+            
 
             default: ;
         endcase
