@@ -53,40 +53,31 @@ package decode_pkg;
     } pc_src_e;
 
     typedef enum logic [2:0] { 
-        BEQ,
-        BNE,
-        BLT,
-        BGE,
-        BLTU,
-        BGEU    
+        BEQ     = 3'b000,
+        BNE     = 3'b001,
+        BLT     = 3'b100,
+        BGE     = 3'b101,
+        BLTU    = 3'b110,
+        BGEU    = 3'b111
     } branch_op_e;
 
     typedef enum logic { 
         TARGET_SRC_PC,
         TARGET_SRC_RS1
-    } target_adder_src_e;
+    } pc_target_src_e;
 
-    typedef enum logic [1:0] { 
-        LD_BYTE,
-        LD_HALF,
-        LD_WORD,
-        LD_BYTE_UNSIGNED,
-        LD_HALF_UNSIGNED
+    typedef enum logic [2:0] { 
+        LD_BYTE             = 3'b000,
+        LD_HALF             = 3'b001,
+        LD_WORD             = 3'b010,
+        LD_BYTE_UNSIGNED    = 3'b100,
+        LD_HALF_UNSIGNED    = 3'b101
     } load_op_e;
 
     typedef enum logic [1:0] { 
-        STORE_BYTE,
-        STORE_HALF,
-        STORE_WORD
+        STORE_BYTE          = 2'b00,
+        STORE_HALF          = 2'b01, 
+        STORE_WORD          = 2'b10
     } store_op_e;
-
-    // typedef enum logic [2:0] { 
-    //     IMM_SRC_I,
-    //     IMM_SRC_S,
-    //     IMM_SRC_U,
-    //     IMM_SRC_U,
-    //     IMM_SRC_B,
-    //     IMM_SRC_J
-    // } imm_src_e;
 
 endpackage
