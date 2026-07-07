@@ -102,7 +102,7 @@ module id_stage (
                 // RegDest = Rd
                 // Reg write true
                 // Write back source is ALU result
-                id_ex.alu_src_a     = ALU_SRC_A_REG;
+                id_ex.alu_src_a     = ALU_SRC_A_ZERO;
                 id_ex.alu_src_b     = ALU_SRC_B_IMM;
                 id_ex.imm_extended  = imm_U;
                 id_ex.alu_op        = ALU_ADD;
