@@ -2,16 +2,16 @@ import decode_pkg::*;
 import pipeline_pkg::*;
 
 module hazard_control (
-    input logic [4:0]  rs1_id,
-    input logic [4:0]  rs2_id,
+    input logic [4:0]   rs1_id,
+    input logic [4:0]   rs2_id,
 
-    input logic [4:0]  rs1_ex,
-    input logic [4:0]  rs2_ex,
-    input logic [4:0]  rd_ex,
+    input logic [4:0]   rs1_ex,
+    input logic [4:0]   rs2_ex,
+    input logic [4:0]   rd_ex,
     input pc_src_e      pc_src_ex,
     input wb_src_e      wb_src_ex,
 
-    input logic [4:0]  rd_mem,
+    input logic [4:0]   rd_mem,
     input logic         reg_write_mem,
 
     input logic         reg_write_wb,
@@ -60,5 +60,29 @@ module hazard_control (
     //      request is served. The pipeline will need to stall PC and IF/ID and flush EX while waiting.
     //      We also assume that instructions reads are single-cycle, but if we introduce a memory hierarchy to imem,
     //      we will need to stall the PC register and flush the IF/ID register while waiting for the memory.
+
+
+    always_comb begin
+        fwd_sel_a = '0;
+        fwd_sel_b = '0;
+
+        // Forward rs1, prioritize MEM
+        if (rs1_ex == rd_mem) && (reg_write_mem) && (rs1_ex != 5'd0) 
+            fwd_sel_a = FWD_MEM;
+        else if (rs1_ex == rd_wb) && (reg_write_mem) && (rs1_ex != 5'd0)
+            fwd_sel_a = FWD_WB;
+        else 
+            fwd_sel_a = FWD_NONE;
+
+        // Forward rs2, prioritize MEM
+        if (rs2_ex == rd_mem) && (reg_write_mem) && (rs2_ex != 5'd0) 
+            fwd_sel_b = FWD_MEM;
+        else if (rs2_ex == rd_wb) && (reg_write_mem) && (rs2_ex != 5'd0)
+            fwd_sel_b = FWD_WB;
+        else 
+            fwd_sel_b = FWD_NONE;
+
+
+    end
 
 endmodule
