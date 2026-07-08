@@ -29,7 +29,7 @@ module core (
         .flush          (1'b0),
         .data_in        (pc_next),
         .data_out       (pc)
-    )
+    );
 
 // Memories
 
