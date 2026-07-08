@@ -7,10 +7,12 @@ module id_stage (
     input   logic [31:0]    rs1_data,
     input   logic [31:0]    rs2_data,
 
+    output  logic [4:0]     rs1_addr,
+    output  logic [4:0]     rs2_addr,
     output  id_ex_reg_t     id_ex
 ); 
 
-    opcode_e opcode     = opcode_t'(if_id.instruction[6:0]);
+    opcode_e opcode     = opcode_e'(if_id.instruction[6:0]);
 
     logic [4:0] rs1     = if_id.instruction[19:15];
     logic [4:0] rs2     = if_id.instruction[24:20];
@@ -21,9 +23,11 @@ module id_stage (
     logic [31:0] imm_I  = {{20{if_id.instruction[31]}}, if_id.instruction[31:20]};
     logic [31:0] imm_S  = {{20{if_id.instruction[31]}}, if_id.instruction[31:25], if_id.instruction[11:7]};
     logic [31:0] imm_U  = {if_id.instruction[31:12], {12{1'b0}}};
-    logic [31:0] imm_B  = {{20{if_id.instruction[12]}}, if_id.instruction[7], if_id.instruction[30:25], if_id.instruction[11:8], 1'b0}
+    logic [31:0] imm_B  = {{20{if_id.instruction[31]}}, if_id.instruction[7], if_id.instruction[30:25], if_id.instruction[11:8], 1'b0};
     logic [31:0] imm_J  = {{12{if_id.instruction[31]}, if_id.instruction[19:12]}, if_id.instruction[20], if_id.instruction[30:25], if_id.instruction[24:21], 1'b0};
 
+    assign rs1_addr     = rs1;
+    assign rs2_addr     = rs2;
 
     always_comb begin
 
