@@ -61,15 +61,25 @@ module hazard_control (
     //      We also assume that instructions reads are single-cycle, but if we introduce a memory hierarchy to imem,
     //      we will need to stall the PC register and flush the IF/ID register while waiting for the memory.
 
+    logic load_stall;
+
+    // ID stage needs memory data from the address currently being calculated in EX stage
+    assign load_stall   = (wb_src_ex == WB_SRC_MEM) && (rs1_id == rd_ex || rs2_id == rd_ex);
+    assign stall_pc_if  = load_stall;
+    assign stall_if_id  = load_stall;
+
+    // Flush IF/ID only on branch/jump, flush ID/EX on branch/jump/load_stall
+    assign flush_if_id  = (pc_src_ex == PC_SRC_TARGET);
+    assign flush_id_ex  = (pc_src_ex == PC_SRC_TARGET) || (load_stall);
 
     always_comb begin
-        fwd_sel_a = '0;
-        fwd_sel_b = '0;
+        fwd_sel_a   = '0;
+        fwd_sel_b   = '0;
 
         // Forward rs1, prioritize MEM
         if (rs1_ex == rd_mem) && (reg_write_mem) && (rs1_ex != 5'd0) 
             fwd_sel_a = FWD_MEM;
-        else if (rs1_ex == rd_wb) && (reg_write_mem) && (rs1_ex != 5'd0)
+        else if (rs1_ex == rd_wb) && (reg_write_wb) && (rs1_ex != 5'd0)
             fwd_sel_a = FWD_WB;
         else 
             fwd_sel_a = FWD_NONE;
@@ -77,11 +87,10 @@ module hazard_control (
         // Forward rs2, prioritize MEM
         if (rs2_ex == rd_mem) && (reg_write_mem) && (rs2_ex != 5'd0) 
             fwd_sel_b = FWD_MEM;
-        else if (rs2_ex == rd_wb) && (reg_write_mem) && (rs2_ex != 5'd0)
+        else if (rs2_ex == rd_wb) && (reg_write_wb) && (rs2_ex != 5'd0)
             fwd_sel_b = FWD_WB;
         else 
             fwd_sel_b = FWD_NONE;
-
 
     end
 
