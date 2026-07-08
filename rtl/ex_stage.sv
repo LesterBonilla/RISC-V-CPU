@@ -12,9 +12,16 @@ module ex_stage (
     logic [31:0]    alu_a;
     logic [31:0]    alu_b;
 
-    // TODO: Branch flags
-    logic           zero_flag;
-    logic           overflow_flag;
+    logic equal;
+    logic less_than;
+    logic less_than_unsigned;
+    logic branch_taken;
+
+    assign pc_src = (branch_taken || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
+
+    assign equal                = (alu_a == alu_b);
+    assign less_than            = ($signed(alu_a) < $signed(alu_b));
+    assign less_than_unsigned   = (alu_a < alu_b);
 
     always_comb begin : basic_integer_alu
         alu_result = '0;
@@ -27,10 +34,10 @@ module ex_stage (
                 alu_result = alu_a << alu_b[4:0];
 
             ALU_SLT:
-                alu_result = ($signed(alu_a) < $signed(alu_b)) ? 32'd1 : 32'd0;
+                alu_result = {31'd0, less_than};
             
             ALU_SLTU:
-                alu_result = (alu_a < alu_b) ? 32'd1 : 32'd0;
+                alu_result = {31'd0, less_than_unsigned};
 
             ALU_XOR:
                 alu_result = alu_a ^ alu_b;
@@ -49,8 +56,24 @@ module ex_stage (
             
             ALU_SRA:
                 alu_result = $signed(alu_a) >>> alu_b[4:0];
+
+            default: alu_result = 32'd0;
         endcase
 
+    end
+
+    always_comb begin : branch_resolve
+        branch_taken = 1'b0;
+
+        unique case (id_ex.branch_op)
+            BEQ:    branch_taken = equal;
+            BNE:    branch_taken = !equal;
+            BLT:    branch_taken = less_than;
+            BGE:    branch_taken = !less_than;
+            BLTU:   branch_taken = less_than_unsigned;
+            BEGU:   branch_taken = !less_than_unsigned;
+            default: ;
+        endcase
     end
 
     always_comb begin : ex_mem_reg_input
