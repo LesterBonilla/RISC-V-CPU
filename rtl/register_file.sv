@@ -3,9 +3,9 @@ module register_file (
 
     input logic [4:0]   rs1_addr,
     input logic [4:0]   rs2_addr,
-    input logic [4:0]   dest_addr,
-    input logic         dest_write_en,
-    input logic [31:0]  dest_write_data,
+    input logic [4:0]   rd_addr,
+    input logic [31:0]  rd_write_data,
+    input logic         reg_write,
 
     output logic [31:0] rs1_data,
     output logic [31:0] rs2_data
@@ -19,8 +19,8 @@ module register_file (
     // Write on falling edge so it can write a result in first half of cycle and read
     // that result in the second half. Prevents needing to forward from WB -> ID.
     always_ff @(negedge clk) begin
-        if (dest_write_en && dest_addr != 5'd0)
-            registers[dest_addr] <= dest_write_data;
+        if (reg_write && rd_addr != 5'd0)
+            registers[rd_addr] <= rd_write_data;
     end
     
 endmodule
