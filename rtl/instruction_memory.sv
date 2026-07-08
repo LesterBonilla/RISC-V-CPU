@@ -1,4 +1,4 @@
-module data_memory #(
+module instruction_memory #(
     parameter int SIZE = 1024,
     parameter int XLEN = 32,
     localparam int ADDR_WIDTH = $clog2(SIZE)
