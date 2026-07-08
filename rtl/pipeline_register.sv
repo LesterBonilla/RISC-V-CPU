@@ -3,7 +3,7 @@ module pipeline_register #(
 )(
     input logic clk,
     input logic rst_n,
-    input logic en,
+    input logic en_n,
     input logic flush,
 
     input T     data_in,
@@ -18,7 +18,7 @@ module pipeline_register #(
         end else if (flush) begin // TODO: Decide if this should affect just the valid bit
             data_out <= '0;
         
-        end else if (en) begin
+        end else if (!en_n) begin
             data_out <= data_in;
         end
     end
