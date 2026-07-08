@@ -4,6 +4,7 @@ import pipeline_pkg::*;
 module ex_stage (
     input id_ex_reg_t   id_ex,
 
+    output logic [31:0] pc_target,
     output pc_src_e     pc_src,
     output ex_mem_reg_t ex_mem
 );
@@ -11,17 +12,39 @@ module ex_stage (
     logic [31:0]    alu_result;
     logic [31:0]    alu_a;
     logic [31:0]    alu_b;
+    logic [31:0]    rs1_data, rs2_data;
 
     logic equal;
     logic less_than;
     logic less_than_unsigned;
     logic branch_taken;
 
+    assign pc_target = (id_ex.pc_target_src ? id_ex.pc : rs1_data) + id_ex.imm_extended;
+
     assign pc_src = (branch_taken || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
 
     assign equal                = (alu_a == alu_b);
     assign less_than            = ($signed(alu_a) < $signed(alu_b));
     assign less_than_unsigned   = (alu_a < alu_b);
+
+    always_comb begin : data_sources
+        
+        unique case (id_ex.alu_src_a)
+            ALU_SRC_A_REG:  alu_a = rs1_data;
+            ALU_SRC_A_ZERO: alu_a = 32'd0;
+            ALU_SRC_A_PC:   alu_a = id_ex.pc;
+            default: ;
+        endcase
+
+        unique case (id_ex.alu_src_b)
+            ALU_SRC_B_REG:  alu_b = rs2_data;
+            ALU_SRC_B_IMM:  alu_b = id_ex.imm_extended;
+            default: ;
+        endcase
+
+        // Place forwarded values for rs1/rs2 data here
+
+    end
 
     always_comb begin : basic_integer_alu
         alu_result = '0;
