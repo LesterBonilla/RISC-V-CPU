@@ -8,14 +8,48 @@ module ex_stage (
     output ex_mem_reg_t ex_mem
 );
 
-    logic [31:0] alu_result;
-    logic [31:0] alu_src_a;
-    logic [31:0] alu_src_b;
+    logic [31:0]    alu_result;
+    logic [31:0]    alu_a;
+    logic [31:0]    alu_b;
+
+    // TODO: Branch flags
+    logic           zero_flag;
+    logic           overflow_flag;
 
     always_comb begin : basic_integer_alu
         alu_result = '0;
-        
 
+        unique case (id_ex.alu_op) 
+            ALU_ADD:
+                alu_result = alu_a + alu_b;
+
+            ALU_SLL:
+                alu_result = alu_a << alu_b[4:0];
+
+            ALU_SLT:
+                alu_result = ($signed(alu_a) < $signed(alu_b)) ? 32'd1 : 32'd0;
+            
+            ALU_SLTU:
+                alu_result = (alu_a < alu_b) ? 32'd1 : 32'd0;
+
+            ALU_XOR:
+                alu_result = alu_a ^ alu_b;
+
+            ALU_SRL:
+                alu_result = alu_a >> alu_b[4:0];
+
+            ALU_OR:
+                alu_result = alu_a | alu_b;
+
+            ALU_AND:
+                alu_result = alu_a & alu_b;
+
+            ALU_SUB:
+                alu_result = alu_a - alu_b;
+            
+            ALU_SRA:
+                alu_result = $signed(alu_a) >>> alu_b[4:0];
+        endcase
 
     end
 
