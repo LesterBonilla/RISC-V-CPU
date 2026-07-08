@@ -78,14 +78,11 @@ module id_stage (
             // EX Stage
                 if (funct3 == ALU_SLL || funct3 == ALU_SRL) begin
                     id_ex.alu_op            = alu_op_e'({funct7[5], funct3});
-                    id_ex.imm_extended      = imm_I;
-                    id_ex.imm_extended[10]  = 1'b0;
-
                 end else begin
                     id_ex.alu_op            = alu_op_e'({1'b0, funct3});
-                    id_ex.imm_extended      = imm_I;
                 end
-    
+                
+                id_ex.imm_extended      = imm_I;
                 id_ex.alu_src_a     = ALU_SRC_A_REG;
                 id_ex.alu_src_b     = ALU_SRC_B_IMM;
             
