@@ -73,21 +73,21 @@ module hazard_control (
     assign flush_id_ex  = (pc_src_ex == PC_SRC_TARGET) || (load_stall);
 
     always_comb begin
-        fwd_sel_a   = '0;
-        fwd_sel_b   = '0;
+        fwd_sel_a   = FWD_NONE;
+        fwd_sel_b   = FWD_NONE;
 
         // Forward rs1, prioritize MEM
-        if (rs1_ex == rd_mem) && (reg_write_mem) && (rs1_ex != 5'd0) 
+        if ((rs1_ex == rd_mem) && (reg_write_mem) && (rs1_ex != 5'd0))
             fwd_sel_a = FWD_MEM;
-        else if (rs1_ex == rd_wb) && (reg_write_wb) && (rs1_ex != 5'd0)
+        else if ((rs1_ex == rd_wb) && (reg_write_wb) && (rs1_ex != 5'd0))
             fwd_sel_a = FWD_WB;
         else 
             fwd_sel_a = FWD_NONE;
 
         // Forward rs2, prioritize MEM
-        if (rs2_ex == rd_mem) && (reg_write_mem) && (rs2_ex != 5'd0) 
+        if ((rs2_ex == rd_mem) && (reg_write_mem) && (rs2_ex != 5'd0))
             fwd_sel_b = FWD_MEM;
-        else if (rs2_ex == rd_wb) && (reg_write_wb) && (rs2_ex != 5'd0)
+        else if ((rs2_ex == rd_wb) && (reg_write_wb) && (rs2_ex != 5'd0))
             fwd_sel_b = FWD_WB;
         else 
             fwd_sel_b = FWD_NONE;
