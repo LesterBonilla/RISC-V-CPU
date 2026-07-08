@@ -3,26 +3,37 @@ module core (
     input rst_n
 );
 
+    // Pipeline structs
     if_id_reg_t     if_id, if_id_next;
     id_ex_reg_t     id_ex, id_ex_next;
     ex_mem_reg_t    ex_mem, ex_mem_next;
     mem_wb_reg_t    mem_wb, mem_wb_next;
 
+    // PC
     logic [31:0]    pc, pc_next, pc_target;
-    logic [31:0]    instruction, rs1_data, rs2_data;
-    logic [31:0]    mem_write_data, mem_write_addr;
-    logic [31:0]    mem_read_addr, mem_read_data;
-    logic [31:0]    alu_result_mem, wb_result;
-    logic [4:0]     rs1_addr, rs2_addr, reg_dest_addr;
-    logic [4:0]     write_mask;
-    
-    logic           mem_write, reg_write;
-    logic           stall_pc_if, stall_if_id, flush_if_id, flush_id_ex;
+    logic [31:0]    instruction;
     pc_src_e        pc_src_ex;
+
+    // Register file
+    logic [31:0]    rs1_data, rs2_data;
+    logic [4:0]     rs1_addr, rs2_addr, rd_addr;
+    logic           reg_write;
+
+    // Data memory
+    logic [31:0]    mem_write_data, dmem_addr, mem_read_data;
+    logic [4:0]     write_mask;
+    logic           mem_write;
+
+    // Hazard control
+    logic [31:0]    fwd_data_mem, wb_result;
+    logic           stall_pc_if, stall_if_id, flush_if_id, flush_id_ex;
     fwd_sel_e       fwd_sel_a, fwd_sel_b;
 
-// PC
-    pipeline_register # (T = logic [31:0]) pc_reg_inst (
+//------------------------------------------------------------------------------
+// Program Counter
+//------------------------------------------------------------------------------
+
+    pipeline_register # (.T(logic [31:0])) pc_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .en_n           (stall_pc_if),
@@ -31,7 +42,9 @@ module core (
         .data_out       (pc)
     );
 
+//------------------------------------------------------------------------------
 // Memories
+//------------------------------------------------------------------------------
 
     instruction_memory # (.SIZE(1024), .XLEN(32)) imem_inst (
         .read_address   (pc),
@@ -41,8 +54,7 @@ module core (
     data_memory # (.SIZE(1024), .XLEN(32)) dmem_inst (
         .clk            (clk),
         .write_en       (mem_write),
-        .read_address   (mem_read_addr),
-        .write_address  (mem_write_addr),
+        .address        (dmem_addr),
         .write_data     (mem_write_data),
         .write_mask     (write_mask),
 
@@ -53,15 +65,45 @@ module core (
         .clk            (clk),
         .rs1_addr       (rs1_addr),
         .rs2_addr       (rs2_addr),
-        .dest_addr      (reg_dest_addr),
-        .dest_write_en  (reg_write),
-        .dest_write_data(wb_result),
+        .rd_addr        (rd_addr),
+        .reg_write      (reg_write),
+        .rd_write_data  (wb_result),
 
         .rs1_data       (rs1_data),
         .rs2_data       (rs2_data)
     );
 
-// Stage Modules
+//------------------------------------------------------------------------------
+// Hazard control
+//------------------------------------------------------------------------------
+    
+    hazard_control hazard_inst (
+        .rs1_id         (id_ex_next.rs1),
+        .rs2_id         (id_ex_next.rs2),
+
+        .rs1_ex         (id_ex.rs1),
+        .rs2_ex         (id_ex.rs2),
+        .rd_ex          (id_ex.rd),
+        .pc_src_ex      (pc_src_ex),
+        .wb_src_ex      (id_ex.wb_src),
+
+        .rd_mem         (ex_mem.rd),
+        .reg_write_mem  (ex_mem.reg_write),
+
+        .reg_write_wb   (mem_wb.reg_write),
+        .rd_wb          (mem_wb.rd),
+
+        .stall_pc_if    (stall_pc_if),
+        .stall_if_id    (stall_if_id),
+        .flush_if_id    (flush_if_id),
+        .flush_id_ex    (flush_id_ex),
+        .fwd_sel_a      (fwd_sel_a),
+        .fwd_sel_b      (fwd_sel_b)
+    );
+
+//------------------------------------------------------------------------------
+// Pipeline stages
+//------------------------------------------------------------------------------
 
     if_stage if_inst (
         .pc             (pc),
@@ -87,7 +129,7 @@ module core (
         .id_ex          (id_ex),
         .fwd_sel_a      (fwd_sel_a),
         .fwd_sel_b      (fwd_sel_b),
-        .fwd_data_mem   (alu_result_mem),
+        .fwd_data_mem   (fwd_data_mem),
         .fwd_data_wb    (wb_result),
 
         .pc_target      (pc_target),
@@ -102,8 +144,8 @@ module core (
         .mem_write      (mem_write),
         .write_mask     (write_mask),
         .write_data     (mem_write_data),
-        .mem_address    (mem_write_addr),
-        .alu_result     (alu_result_mem),
+        .mem_address    (dmem_addr),
+        .alu_result     (fwd_data_mem),
         .mem_wb         (mem_wb_next)
     );
 
@@ -111,13 +153,15 @@ module core (
         .mem_wb         (mem_wb),
 
         .reg_write      (reg_write),
-        .reg_write_addr (reg_dest_addr),
+        .reg_write_addr (rd_addr),
         .wb_result      (wb_result)
     );
 
-// Stage registers
+//------------------------------------------------------------------------------
+// Pipeline registers
+//------------------------------------------------------------------------------
 
-    pipeline_register # (parameter T = if_id_reg_t) if_id_reg_inst (
+    pipeline_register # (.T(if_id_reg_t)) if_id_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .en_n           (stall_if_id),
@@ -127,7 +171,7 @@ module core (
         .data_out       (if_id)
     );
 
-    pipeline_register # (parameter T = id_ex_reg_t) id_ex_reg_inst (
+    pipeline_register # (.T(id_ex_reg_t)) id_ex_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .en_n           (1'b0),
@@ -137,7 +181,7 @@ module core (
         .data_out       (id_ex)
     );
 
-    pipeline_register # (parameter T = ex_mem_reg_t) ex_mem_reg_inst (
+    pipeline_register # (.T(ex_mem_reg_t)) ex_mem_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .en_n           (1'b0),
@@ -147,7 +191,7 @@ module core (
         .data_out       (ex_mem)
     );
 
-    pipeline_register # (parameter T = mem_wb_reg_t) mem_wb_reg_inst (
+    pipeline_register # (.T(mem_wb_reg_t)) mem_wb_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .en_n           (1'b0),
@@ -157,30 +201,6 @@ module core (
         .data_out       (mem_wb)
     );
 
-// Hazard Control
-    
-    hazard_control hazard_inst (
-        .rs1_id         (id_ex_next.rs1),
-        .rs2_id         (id_ex_next.rs2),
 
-        .rs1_ex         (id_ex.rs1),
-        .rs2_ex         (id_ex.rs2),
-        .rd_ex          (id_ex.rd),
-        .pc_src_ex      (pc_src_ex),
-        .wb_src_ex      (id_ex.wb_src),
-
-        .rd_mem         (ex_mem.rd),
-        .reg_write_mem  (ex_mem.reg_write),
-
-        .reg_write_wb   (mem_wb.reg_write),
-        .rd_wb          (mem_wb.rd),
-
-        .stall_pc_if    (stall_pc_if),
-        .stall_if_id    (stall_if_id),
-        .flush_if_id    (flush_if_id),
-        .flush_id_ex    (flush_id_ex),
-        .fwd_sel_a      (fwd_sel_a),
-        .fwd_sel_b      (fwd_sel_b)
-    );
 
 endmodule
