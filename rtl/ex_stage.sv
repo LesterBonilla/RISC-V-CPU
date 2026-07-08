@@ -50,14 +50,14 @@ module ex_stage (
         endcase
 
         unique case (fwd_sel_a) 
-            FWD_NONE:   rs1_data = id_ex.reg_data_1;
+            FWD_NONE:   rs1_data = id_ex.rs1_data;
             FWD_MEM:    rs1_data = fwd_data_mem;
             FWD_WB:     rs1_data = fwd_data_wb;
             default:    rs1_data = 32'd0;
         endcase
 
         unique case (fwd_sel_b) 
-            FWD_NONE:   rs2_data = id_ex.reg_data_1;
+            FWD_NONE:   rs2_data = id_ex.rs2_data;
             FWD_MEM:    rs2_data = fwd_data_mem;
             FWD_WB:     rs2_data = fwd_data_wb;
             default:    rs2_data = 32'd0;

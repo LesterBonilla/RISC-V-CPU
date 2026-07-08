@@ -4,8 +4,8 @@ import pipeline_pkg::*;
 module id_stage (
     input   if_id_reg_t     if_id,
 
-    input   logic [31:0]    reg_data_1,
-    input   logic [31:0]    reg_data_2,
+    input   logic [31:0]    rs1_data,
+    input   logic [31:0]    rs2_data,
 
     output  id_ex_reg_t     id_ex
 ); 
@@ -39,8 +39,8 @@ module id_stage (
         id_ex.rs1           = rs1;
         id_ex.rs2           = rs2;
         id_ex.rd            = rd;
-        id_ex.reg_data_1    = reg_data_1;
-        id_ex.reg_data_2    = reg_data_2;
+        id_ex.rs1_data    = rs1_data;
+        id_ex.rs2_data    = rs2_data;
 
         unique case (opcode)
             OP_REG_REG:   

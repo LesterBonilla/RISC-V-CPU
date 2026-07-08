@@ -43,8 +43,8 @@ package pipeline_pkg;
         logic [31:0]        imm_extended;
         logic [31:0]        pc;
         logic [31:0]        pc_plus4;
-        logic [31:0]        reg_data_1;
-        logic [31:0]        reg_data_2;
+        logic [31:0]        rs1_data;
+        logic [31:0]        rs2_data;
 
     } id_ex_reg_t;
 
