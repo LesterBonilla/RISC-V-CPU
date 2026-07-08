@@ -56,7 +56,6 @@ module mem_stage (
             LD_HALF_UNSIGNED:   mem_data_adjusted = ld_half_unsigned_ext;
             default: ;
         endcase
-
     end
 
 
@@ -65,20 +64,21 @@ module mem_stage (
         write_data = ex_mem.write_data;
 
         unique case (ex_mem.store_op)
-            STORE_BYTE:
+            STORE_BYTE: begin
                 write_data = write_data << (8 * ex_mem.alu_result[1:0]);
                 write_mask = 4'b0001 << (ex_mem.alu_result[1:0]);
+            end
 
-            STORE_HALF:
+            STORE_HALF: begin
                 write_data = write_data << (16 * ex_mem.alu_result[1]);
                 write_mask = 4'b0011 << (2 * ex_mem.alu_result[1]);
+            end
 
             STORE_WORD:
                 write_mask = 4'b1111;
 
             default: ;
         endcase
-        
     end
 
 
@@ -92,7 +92,6 @@ module mem_stage (
         mem_wb.pc_plus4     = ex_mem.pc_plus4;
         mem_wb.rd           = ex_mem.rd;
         mem_wb.mem_data     = mem_data_adjusted;
-
     end
     
 endmodule
