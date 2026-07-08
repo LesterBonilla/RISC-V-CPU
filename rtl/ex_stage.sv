@@ -50,35 +50,16 @@ module ex_stage (
         alu_result = '0;
 
         unique case (id_ex.alu_op) 
-            ALU_ADD:
-                alu_result = alu_a + alu_b;
-
-            ALU_SLL:
-                alu_result = alu_a << alu_b[4:0];
-
-            ALU_SLT:
-                alu_result = {31'd0, less_than};
-            
-            ALU_SLTU:
-                alu_result = {31'd0, less_than_unsigned};
-
-            ALU_XOR:
-                alu_result = alu_a ^ alu_b;
-
-            ALU_SRL:
-                alu_result = alu_a >> alu_b[4:0];
-
-            ALU_OR:
-                alu_result = alu_a | alu_b;
-
-            ALU_AND:
-                alu_result = alu_a & alu_b;
-
-            ALU_SUB:
-                alu_result = alu_a - alu_b;
-            
-            ALU_SRA:
-                alu_result = $signed(alu_a) >>> alu_b[4:0];
+            ALU_ADD:    alu_result = alu_a + alu_b;
+            ALU_SLL:    alu_result = alu_a << alu_b[4:0];
+            ALU_SLT:    alu_result = {31'd0, less_than};
+            ALU_SLTU:   alu_result = {31'd0, less_than_unsigned};
+            ALU_XOR:    alu_result = alu_a ^ alu_b;
+            ALU_SRL:    alu_result = alu_a >> alu_b[4:0];
+            ALU_OR:     alu_result = alu_a | alu_b;
+            ALU_AND:    alu_result = alu_a & alu_b;
+            ALU_SUB:    alu_result = alu_a - alu_b;
+            ALU_SRA:    alu_result = $signed(alu_a) >>> alu_b[4:0];
 
             default: alu_result = 32'd0;
         endcase
