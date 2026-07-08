@@ -3,6 +3,10 @@ import pipeline_pkg::*;
 
 module ex_stage (
     input id_ex_reg_t   id_ex,
+    input fwd_sel_e     fwd_sel_a,
+    input fwd_sel_e     fwd_sel_b,
+    input logic [31:0]  fwd_data_mem,
+    input logic [31:0]  fwd_data_wb,
 
     output logic [31:0] pc_target,
     output pc_src_e     pc_src,
@@ -19,31 +23,45 @@ module ex_stage (
     logic less_than_unsigned;
     logic branch_taken;
 
-    assign pc_target = (id_ex.pc_target_src ? id_ex.pc : rs1_data) + id_ex.imm_extended;
-
-    assign pc_src = (branch_taken || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
+    assign pc_target    = (id_ex.pc_target_src ? id_ex.pc : rs1_data) + id_ex.imm_extended;
+    assign pc_src       = (branch_taken || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
 
     assign equal                = (alu_a == alu_b);
     assign less_than            = ($signed(alu_a) < $signed(alu_b));
     assign less_than_unsigned   = (alu_a < alu_b);
 
     always_comb begin : data_sources
+        alu_a       = '0;
+        alu_b       = '0;
+        rs1_data    = '0;
+        rs2_data    = '0;
         
         unique case (id_ex.alu_src_a)
             ALU_SRC_A_REG:  alu_a = rs1_data;
             ALU_SRC_A_ZERO: alu_a = 32'd0;
             ALU_SRC_A_PC:   alu_a = id_ex.pc;
-            default: ;
+            default:        alu_a = 32'd0;
         endcase
 
         unique case (id_ex.alu_src_b)
             ALU_SRC_B_REG:  alu_b = rs2_data;
             ALU_SRC_B_IMM:  alu_b = id_ex.imm_extended;
-            default: ;
+            default:        alu_b = 32'd0;
         endcase
 
-        // Place forwarded values for rs1/rs2 data here
+        unique case (fwd_sel_a) 
+            FWD_NONE:   rs1_data = id_ex.reg_data_1;
+            FWD_MEM:    rs1_data = fwd_data_mem;
+            FWD_WB:     rs1_data = fwd_data_wb;
+            default:    rs1_data = 32'd0;
+        endcase
 
+        unique case (fwd_sel_b) 
+            FWD_NONE:   rs2_data = id_ex.reg_data_1;
+            FWD_MEM:    rs2_data = fwd_data_mem;
+            FWD_WB:     rs2_data = fwd_data_wb;
+            default:    rs2_data = 32'd0;
+        endcase
     end
 
     always_comb begin : basic_integer_alu
@@ -63,7 +81,6 @@ module ex_stage (
 
             default: alu_result = 32'd0;
         endcase
-
     end
 
     always_comb begin : branch_resolve
@@ -91,13 +108,12 @@ module ex_stage (
         ex_mem.wb_src       = id_ex.wb_src;
         ex_mem.load_op      = id_ex.load_op;
         ex_mem.store_op     = id_ex.store_op;
-        ex_mem.write_data   = id_ex.reg_data_2; // Will be changed when hazard control is introduced
         ex_mem.rd           = id_ex.rd;
         ex_mem.pc_plus4     = id_ex.pc_plus4;
-
+        
         // Values calculated by EX stage
         ex_mem.alu_result   = alu_result;
-
+        ex_mem.write_data   = rs2_data;
     end
     
 endmodule
