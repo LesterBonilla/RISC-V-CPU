@@ -92,7 +92,7 @@ module ex_stage (
             BLT:    branch_taken = less_than;
             BGE:    branch_taken = !less_than;
             BLTU:   branch_taken = less_than_unsigned;
-            BEGU:   branch_taken = !less_than_unsigned;
+            BGEU:   branch_taken = !less_than_unsigned;
             default: ;
         endcase
     end
