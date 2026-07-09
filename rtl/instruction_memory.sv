@@ -8,8 +8,8 @@ module instruction_memory #(
 );
 
     logic [XLEN-1:0] memory [SIZE-1:0];
-    //initial $readmemh("", memory);
+    initial $readmemh("program.hex", memory);
 
-    assign data_out = memory[read_address];
+    assign data_out = memory[read_address >> 2];
     
 endmodule
