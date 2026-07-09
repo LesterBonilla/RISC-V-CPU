@@ -2,8 +2,8 @@ import decode_pkg::*;
 import pipeline_pkg::*;
 
 module core (
-    input clk,
-    input rst_n
+    input logic clk,
+    input logic rst_n
 );
 
     // Pipeline structs
