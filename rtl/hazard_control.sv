@@ -64,7 +64,7 @@ module hazard_control (
     logic load_stall;
 
     // ID stage needs memory data from the address currently being calculated in EX stage
-    assign load_stall   = (wb_src_ex == WB_SRC_MEM) && (rs1_id == rd_ex || rs2_id == rd_ex);
+    assign load_stall   = (wb_src_ex == WB_SRC_MEM) && (rs1_id == rd_ex || rs2_id == rd_ex) && (rd_ex != 5'd0);
     assign stall_pc_if  = load_stall;
     assign stall_if_id  = load_stall;
 
