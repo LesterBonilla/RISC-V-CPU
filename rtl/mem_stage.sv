@@ -19,7 +19,7 @@ module mem_stage (
     assign opcode_mem   = ex_mem.opcode;
     assign mem_write    = ex_mem.mem_write && ex_mem.valid;
     assign alu_result   = ex_mem.alu_result;
-    assign mem_address  = {ex_mem.alu_result[31:2], 2'b0};
+    assign mem_address  = ex_mem.alu_result;
 
     logic [15:0] selected_half;
     logic [7:0]  selected_byte;   
@@ -32,10 +32,11 @@ module mem_stage (
     logic [31:0] mem_data_adjusted;
 
 
-    always_comb begin : load_select
-        selected_half       = '0;
+    assign selected_half = (ex_mem.alu_result[1]) ? mem_data[31:16] : mem_data[15:0];
+
+    
+    always_comb begin : select_load_byte
         selected_byte       = '0;
-        mem_data_adjusted   = '0;
         
         unique case (ex_mem.alu_result[1:0])
             2'b00: selected_byte = mem_data[7:0];
@@ -44,12 +45,11 @@ module mem_stage (
             2'b11: selected_byte = mem_data[31:24];
             default: ;
         endcase
+    end
 
-        unique case (ex_mem.alu_result[1])
-            1'b0: selected_half = mem_data[15:0];
-            1'b1: selected_half = mem_data[31:16];
-            default: ;
-        endcase
+
+    always_comb begin : load_select
+        mem_data_adjusted   = '0;
 
         unique case (ex_mem.load_op)
             LOAD_BYTE:            mem_data_adjusted = ld_byte_ext;

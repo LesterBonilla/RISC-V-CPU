@@ -1,15 +1,15 @@
 module instruction_memory #(
-    parameter int SIZE = 1024,
-    parameter int XLEN = 32,
-    localparam int ADDR_WIDTH = $clog2(SIZE)
+    parameter int SIZE_WORDS = 1024
 )(
-    input   logic [ADDR_WIDTH-1:0]  read_address,
-    output  logic [XLEN-1:0]        data_out
+    input   logic [31:0]  address,
+    output  logic [31:0]  data_out
 );
 
-    logic [XLEN-1:0] memory [SIZE-1:0];
+    localparam int ADDR_WIDTH_BYTES = $clog2(SIZE_WORDS * 4);
+
+    logic [31:0] memory [SIZE_WORDS-1:0];
     initial $readmemh("program.hex", memory);
 
-    assign data_out = memory[read_address >> 2];
+    assign data_out = memory[address[ADDR_WIDTH_BYTES-1:2]];
     
 endmodule

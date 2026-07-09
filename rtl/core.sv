@@ -1,7 +1,10 @@
 import decode_pkg::*;
 import pipeline_pkg::*;
 
-module core (
+module core # (
+    parameter int IMEM_SIZE_WORDS = 1024,
+    parameter int DMEM_SIZE_WORDS = 1024
+)(
     input logic clk,
     input logic rst_n
 );
@@ -49,12 +52,12 @@ module core (
 // Memories
 //------------------------------------------------------------------------------
 
-    instruction_memory # (.SIZE(1024), .XLEN(32)) imem_inst (
-        .read_address   (pc),
+    instruction_memory # (.SIZE_WORDS(IMEM_SIZE_WORDS)) imem_inst (
+        .address        (pc),
         .data_out       (instruction)
     );
 
-    data_memory # (.SIZE(1024), .XLEN(32)) dmem_inst (
+    data_memory # (.SIZE_WORDS(DMEM_SIZE_WORDS)) dmem_inst (
         .clk            (clk),
         .write_en       (mem_write),
         .address        (dmem_addr),
