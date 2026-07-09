@@ -16,11 +16,11 @@ package pipeline_pkg;
         logic [31:0]        pc;
         logic [31:0]        pc_plus4;
 
-
     } if_id_reg_t;
 
     typedef struct packed {
         logic               valid;
+        opcode_e            opcode;
 
         // Control signals
         logic               reg_write;
@@ -50,6 +50,7 @@ package pipeline_pkg;
 
     typedef struct packed {
         logic               valid;
+        opcode_e            opcode;
 
         // Control signals
         logic               reg_write;
@@ -68,6 +69,7 @@ package pipeline_pkg;
 
     typedef struct packed {
         logic               valid;
+        opcode_e            opcode;
         
         // Control signals
         logic               reg_write;

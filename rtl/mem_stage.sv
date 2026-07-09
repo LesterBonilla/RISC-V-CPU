@@ -14,6 +14,9 @@ module mem_stage (
     output mem_wb_reg_t mem_wb
 );
 
+    opcode_e opcode_mem;
+    
+    assign opcode_mem   = ex_mem.opcode;
     assign mem_write    = ex_mem.mem_write && ex_mem.valid;
     assign alu_result   = ex_mem.alu_result;
     assign mem_address  = {ex_mem.alu_result[31:2], 2'b0};
@@ -91,6 +94,7 @@ module mem_stage (
         mem_wb.alu_result   = ex_mem.alu_result;
         mem_wb.pc_plus4     = ex_mem.pc_plus4;
         mem_wb.rd           = ex_mem.rd;
+        mem_wb.opcode       = ex_mem.opcode;
         mem_wb.mem_data     = mem_data_adjusted;
     end
     

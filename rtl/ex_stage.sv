@@ -13,18 +13,21 @@ module ex_stage (
     output ex_mem_reg_t ex_mem
 );
 
+    opcode_e        opcode_ex;
+    
     logic [31:0]    alu_result;
     logic [31:0]    alu_a;
     logic [31:0]    alu_b;
     logic [31:0]    rs1_data, rs2_data;
-
+    
     logic equal;
     logic less_than;
     logic less_than_unsigned;
     logic branch_taken;
-
-    assign pc_target    = (id_ex.pc_target_src ? id_ex.pc : rs1_data) + id_ex.imm_extended;
-    assign pc_src       = (branch_taken || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
+    
+    assign opcode_ex    = id_ex.opcode;
+    assign pc_target    = ((id_ex.pc_target_src == TARGET_SRC_PC) ? id_ex.pc : rs1_data) + id_ex.imm_extended;
+    assign pc_src       = ((branch_taken && id_ex.branch) || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
 
     assign equal                = (alu_a == alu_b);
     assign less_than            = ($signed(alu_a) < $signed(alu_b));
@@ -110,6 +113,7 @@ module ex_stage (
         ex_mem.store_op     = id_ex.store_op;
         ex_mem.rd           = id_ex.rd;
         ex_mem.pc_plus4     = id_ex.pc_plus4;
+        ex_mem.opcode       = id_ex.opcode;
         
         // Values calculated by EX stage
         ex_mem.alu_result   = alu_result;

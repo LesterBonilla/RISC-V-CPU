@@ -10,6 +10,9 @@ module wb_stage (
 
 );
 
+    opcode_e opcode_wb;
+
+    assign opcode_wb        = mem_wb.opcode;
     assign reg_write        = mem_wb.valid && mem_wb.reg_write;
     assign reg_write_addr   = mem_wb.rd;
 
