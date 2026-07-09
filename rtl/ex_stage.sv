@@ -33,24 +33,9 @@ module ex_stage (
     assign less_than            = ($signed(alu_a) < $signed(alu_b));
     assign less_than_unsigned   = (alu_a < alu_b);
 
-    always_comb begin : data_sources
-        alu_a       = '0;
-        alu_b       = '0;
+    always_comb begin : forward_mux
         rs1_data    = '0;
         rs2_data    = '0;
-        
-        unique case (id_ex.alu_src_a)
-            ALU_SRC_A_REG:  alu_a = rs1_data;
-            ALU_SRC_A_ZERO: alu_a = 32'd0;
-            ALU_SRC_A_PC:   alu_a = id_ex.pc;
-            default:        alu_a = 32'd0;
-        endcase
-
-        unique case (id_ex.alu_src_b)
-            ALU_SRC_B_REG:  alu_b = rs2_data;
-            ALU_SRC_B_IMM:  alu_b = id_ex.imm_extended;
-            default:        alu_b = 32'd0;
-        endcase
 
         unique case (fwd_sel_a) 
             FWD_NONE:   rs1_data = id_ex.rs1_data;
@@ -64,6 +49,24 @@ module ex_stage (
             FWD_MEM:    rs2_data = fwd_data_mem;
             FWD_WB:     rs2_data = fwd_data_wb;
             default:    rs2_data = 32'd0;
+        endcase
+    end
+
+    always_comb begin : alu_operand_mux
+        alu_a       = '0;
+        alu_b       = '0;
+        
+        unique case (id_ex.alu_src_a)
+            ALU_SRC_A_REG:  alu_a = rs1_data;
+            ALU_SRC_A_ZERO: alu_a = 32'd0;
+            ALU_SRC_A_PC:   alu_a = id_ex.pc;
+            default:        alu_a = 32'd0;
+        endcase
+
+        unique case (id_ex.alu_src_b)
+            ALU_SRC_B_REG:  alu_b = rs2_data;
+            ALU_SRC_B_IMM:  alu_b = id_ex.imm_extended;
+            default:        alu_b = 32'd0;
         endcase
     end
 
