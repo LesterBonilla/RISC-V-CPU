@@ -13,25 +13,26 @@ module ex_stage (
     output ex_mem_reg_t ex_mem
 );
 
-    opcode_e        opcode_ex;
+    opcode_e            opcode_ex;
     
-    logic [31:0]    alu_result;
-    logic [31:0]    alu_a;
-    logic [31:0]    alu_b;
-    logic [31:0]    rs1_data, rs2_data;
+    logic [31:0]        alu_result;
+    logic [31:0]        alu_a;
+    logic [31:0]        alu_b;
+    logic [31:0]        rs1_data, rs2_data;
     
-    logic equal;
-    logic less_than;
-    logic less_than_unsigned;
-    logic branch_taken;
+    logic               cmp_eq;
+    logic               cmp_lt;
+    logic               cmp_ltu;
+    logic               branch_taken;
     
     assign opcode_ex    = id_ex.opcode;
     assign pc_target    = ((id_ex.pc_target_src == TARGET_SRC_PC) ? id_ex.pc : rs1_data) + id_ex.imm_extended;
     assign pc_src       = ((branch_taken && id_ex.branch) || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
 
-    assign equal                = (alu_a == alu_b);
-    assign less_than            = ($signed(alu_a) < $signed(alu_b));
-    assign less_than_unsigned   = (alu_a < alu_b);
+    assign cmp_eq       = (alu_a == alu_b);
+    assign cmp_lt       = ($signed(alu_a) < $signed(alu_b));
+    assign cmp_ltu      = (alu_a < alu_b);
+
 
     always_comb begin : forward_mux
         rs1_data    = '0;
@@ -52,6 +53,7 @@ module ex_stage (
         endcase
     end
 
+
     always_comb begin : alu_operand_mux
         alu_a       = '0;
         alu_b       = '0;
@@ -70,14 +72,15 @@ module ex_stage (
         endcase
     end
 
+
     always_comb begin : basic_integer_alu
         alu_result = '0;
 
         unique case (id_ex.alu_op) 
             ALU_ADD:    alu_result = alu_a + alu_b;
             ALU_SLL:    alu_result = alu_a << alu_b[4:0];
-            ALU_SLT:    alu_result = {31'd0, less_than};
-            ALU_SLTU:   alu_result = {31'd0, less_than_unsigned};
+            ALU_SLT:    alu_result = {31'd0, cmp_lt};
+            ALU_SLTU:   alu_result = {31'd0, cmp_ltu};
             ALU_XOR:    alu_result = alu_a ^ alu_b;
             ALU_SRL:    alu_result = alu_a >> alu_b[4:0];
             ALU_OR:     alu_result = alu_a | alu_b;
@@ -89,20 +92,22 @@ module ex_stage (
         endcase
     end
 
+
     always_comb begin : branch_resolve
         branch_taken = 1'b0;
 
         unique case (id_ex.branch_op)
-            BEQ:    branch_taken = equal;
-            BNE:    branch_taken = !equal;
-            BLT:    branch_taken = less_than;
-            BGE:    branch_taken = !less_than;
-            BLTU:   branch_taken = less_than_unsigned;
-            BGEU:   branch_taken = !less_than_unsigned;
+            BEQ:    branch_taken = cmp_eq;
+            BNE:    branch_taken = !cmp_eq;
+            BLT:    branch_taken = cmp_lt;
+            BGE:    branch_taken = !cmp_lt;
+            BLTU:   branch_taken = cmp_ltu;
+            BGEU:   branch_taken = !cmp_ltu;
             default: ;
         endcase
     end
 
+    
     always_comb begin : ex_mem_reg_input
         // Prevent latches
         ex_mem = '0;
@@ -114,7 +119,7 @@ module ex_stage (
         ex_mem.wb_src       = id_ex.wb_src;
         ex_mem.load_op      = id_ex.load_op;
         ex_mem.store_op     = id_ex.store_op;
-        ex_mem.rd           = id_ex.rd;
+        ex_mem.rd_addr      = id_ex.rd_addr;
         ex_mem.pc_plus4     = id_ex.pc_plus4;
         ex_mem.opcode       = id_ex.opcode;
         

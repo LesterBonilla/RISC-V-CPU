@@ -37,9 +37,9 @@ package pipeline_pkg;
         pc_target_src_e     pc_target_src;
 
         // Data lines
-        logic [4:0]         rs1;
-        logic [4:0]         rs2;
-        logic [4:0]         rd;
+        logic [4:0]         rs1_addr;
+        logic [4:0]         rs2_addr;
+        logic [4:0]         rd_addr;
         logic [31:0]        imm_extended;
         logic [31:0]        pc;
         logic [31:0]        pc_plus4;
@@ -63,7 +63,7 @@ package pipeline_pkg;
         logic [31:0]        alu_result;
         logic [31:0]        write_data;
         logic [31:0]        pc_plus4;
-        logic [4:0]         rd;
+        logic [4:0]         rd_addr;
 
     } ex_mem_reg_t;
 
@@ -79,7 +79,7 @@ package pipeline_pkg;
         logic [31:0]        alu_result;
         logic [31:0]        mem_data;
         logic [31:0]        pc_plus4;
-        logic [4:0]         rd;
+        logic [4:0]         rd_addr;
 
     } mem_wb_reg_t;
 

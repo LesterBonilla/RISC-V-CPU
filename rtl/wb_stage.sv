@@ -5,16 +5,16 @@ module wb_stage (
     input mem_wb_reg_t  mem_wb,
 
     output logic        reg_write,
-    output logic [4:0]  reg_write_addr,
+    output logic [4:0]  rd_addr,
     output logic [31:0] wb_result
 
 );
 
     opcode_e opcode_wb;
 
-    assign opcode_wb        = mem_wb.opcode;
-    assign reg_write        = mem_wb.valid && mem_wb.reg_write;
-    assign reg_write_addr   = mem_wb.rd;
+    assign opcode_wb    = mem_wb.opcode;
+    assign reg_write    = mem_wb.valid && mem_wb.reg_write;
+    assign rd_addr      = mem_wb.rd_addr;
 
     always_comb begin
         wb_result = '0;

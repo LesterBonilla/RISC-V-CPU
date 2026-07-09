@@ -24,7 +24,7 @@ module core (
 
     // Data memory
     logic [31:0]    mem_write_data, dmem_addr, mem_read_data;
-    logic [4:0]     write_mask;
+    logic [3:0]     write_mask;
     logic           mem_write;
 
     // Hazard control
@@ -39,7 +39,7 @@ module core (
     pipeline_register # (.T(logic [31:0])) pc_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
-        .en_n           (stall_pc_if),
+        .stall          (stall_pc_if),
         .flush          (1'b0),
         .data_in        (pc_next),
         .data_out       (pc)
@@ -81,20 +81,20 @@ module core (
 //------------------------------------------------------------------------------
     
     hazard_control hazard_inst (
-        .rs1_id         (id_ex_next.rs1),
-        .rs2_id         (id_ex_next.rs2),
+        .rs1_id         (id_ex_next.rs1_addr),
+        .rs2_id         (id_ex_next.rs2_addr),
 
-        .rs1_ex         (id_ex.rs1),
-        .rs2_ex         (id_ex.rs2),
-        .rd_ex          (id_ex.rd),
+        .rs1_ex         (id_ex.rs1_addr),
+        .rs2_ex         (id_ex.rs2_addr),
+        .rd_ex          (id_ex.rd_addr),
         .pc_src_ex      (pc_src_ex),
         .wb_src_ex      (id_ex.wb_src),
 
-        .rd_mem         (ex_mem.rd),
+        .rd_mem         (ex_mem.rd_addr),
         .reg_write_mem  (ex_mem.reg_write),
 
+        .rd_wb          (mem_wb.rd_addr),
         .reg_write_wb   (mem_wb.reg_write),
-        .rd_wb          (mem_wb.rd),
 
         .stall_pc_if    (stall_pc_if),
         .stall_if_id    (stall_if_id),
@@ -156,7 +156,7 @@ module core (
         .mem_wb         (mem_wb),
 
         .reg_write      (reg_write),
-        .reg_write_addr (rd_addr),
+        .rd_addr        (rd_addr),
         .wb_result      (wb_result)
     );
 
@@ -167,7 +167,7 @@ module core (
     pipeline_register # (.T(if_id_reg_t)) if_id_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
-        .en_n           (stall_if_id),
+        .stall          (stall_if_id),
         .flush          (flush_if_id),
         .data_in        (if_id_next),
 
@@ -177,7 +177,7 @@ module core (
     pipeline_register # (.T(id_ex_reg_t)) id_ex_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
-        .en_n           (1'b0),
+        .stall          (1'b0),
         .flush          (flush_id_ex),
         .data_in        (id_ex_next),
 
@@ -187,7 +187,7 @@ module core (
     pipeline_register # (.T(ex_mem_reg_t)) ex_mem_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
-        .en_n           (1'b0),
+        .stall          (1'b0),
         .flush          (1'b0),
         .data_in        (ex_mem_next),
 
@@ -197,7 +197,7 @@ module core (
     pipeline_register # (.T(mem_wb_reg_t)) mem_wb_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
-        .en_n           (1'b0),
+        .stall          (1'b0),
         .flush          (1'b0),
         .data_in        (mem_wb_next),
 

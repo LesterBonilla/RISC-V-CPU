@@ -52,11 +52,11 @@ module mem_stage (
         endcase
 
         unique case (ex_mem.load_op)
-            LD_BYTE:            mem_data_adjusted = ld_byte_ext;
-            LD_HALF:            mem_data_adjusted = ld_half_ext;
-            LD_WORD:            mem_data_adjusted = mem_data;
-            LD_BYTE_UNSIGNED:   mem_data_adjusted = ld_byte_unsigned_ext;
-            LD_HALF_UNSIGNED:   mem_data_adjusted = ld_half_unsigned_ext;
+            LOAD_BYTE:            mem_data_adjusted = ld_byte_ext;
+            LOAD_HALF:            mem_data_adjusted = ld_half_ext;
+            LOAD_WORD:            mem_data_adjusted = mem_data;
+            LOAD_BYTE_UNSIGNED:   mem_data_adjusted = ld_byte_unsigned_ext;
+            LOAD_HALF_UNSIGNED:   mem_data_adjusted = ld_half_unsigned_ext;
             default: ;
         endcase
     end
@@ -93,7 +93,7 @@ module mem_stage (
         mem_wb.wb_src       = ex_mem.wb_src;
         mem_wb.alu_result   = ex_mem.alu_result;
         mem_wb.pc_plus4     = ex_mem.pc_plus4;
-        mem_wb.rd           = ex_mem.rd;
+        mem_wb.rd_addr      = ex_mem.rd_addr;
         mem_wb.opcode       = ex_mem.opcode;
         mem_wb.mem_data     = mem_data_adjusted;
     end

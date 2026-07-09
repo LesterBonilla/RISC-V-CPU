@@ -14,12 +14,12 @@ module if_stage (
     logic [31:0] pc_plus4;
     opcode_e     opcode_if;
 
-    assign pc_plus4     = pc + 4;
-    assign opcode_if    = opcode_e'(instruction[6:0]);
-    assign pc_next      = (pc_src == PC_SRC_PC_PLUS4) ? pc_plus4 : pc_target;
+    assign pc_plus4         = pc + 4;
+    assign opcode_if        = opcode_e'(instruction[6:0]);
+    assign pc_next          = (pc_src == PC_SRC_PC_PLUS4) ? pc_plus4 : pc_target;
 
     always_comb begin : if_id_reg_input
-        if_id       = '0;
+        if_id               = '0;
 
         if_id.valid         = 1'b1;
         if_id.pc            = pc;

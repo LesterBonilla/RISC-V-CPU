@@ -11,20 +11,20 @@ package decode_pkg;
         OP_STORE    = 7'b0100011,
         OP_REG_REG  = 7'b0110011,
         OP_FENCE    = 7'b0001111,
-        OP_E_OP     = 7'b1110011
+        OP_SYSTEM   = 7'b1110011
     } opcode_e;
 
     // This matches with {funct7[5], funct3} to account for funct3 overlap between
     // ADD/SUB and SRL/SRA
     typedef enum logic [3:0] { 
-        ALU_ADD, 
-        ALU_SLL,
-        ALU_SLT,
-        ALU_SLTU,
-        ALU_XOR,
-        ALU_SRL, 
-        ALU_OR,
-        ALU_AND,
+        ALU_ADD     = 4'b0000, 
+        ALU_SLL     = 4'b0001,
+        ALU_SLT     = 4'b0010,
+        ALU_SLTU    = 4'b0011,
+        ALU_XOR     = 4'b0100,
+        ALU_SRL     = 4'b0101, 
+        ALU_OR      = 4'b0110,
+        ALU_AND     = 4'b0111,
         ALU_SUB     = 4'b1000,
         ALU_SRA     = 4'b1101
     } alu_op_e;
@@ -66,11 +66,11 @@ package decode_pkg;
     } pc_target_src_e;
 
     typedef enum logic [2:0] { 
-        LD_BYTE             = 3'b000,
-        LD_HALF             = 3'b001,
-        LD_WORD             = 3'b010,
-        LD_BYTE_UNSIGNED    = 3'b100,
-        LD_HALF_UNSIGNED    = 3'b101
+        LOAD_BYTE             = 3'b000,
+        LOAD_HALF             = 3'b001,
+        LOAD_WORD             = 3'b010,
+        LOAD_BYTE_UNSIGNED    = 3'b100,
+        LOAD_HALF_UNSIGNED    = 3'b101
     } load_op_e;
 
     typedef enum logic [1:0] { 
