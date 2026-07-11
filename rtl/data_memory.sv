@@ -16,7 +16,7 @@ module data_memory #(
 
     logic [ADDR_WIDTH_WORDS-1:0]    word_address;
     logic [31:0]                    memory [SIZE_WORDS-1:0];
-    //initial $readmemh("", memory);
+    initial $readmemh("dmem.hex", memory);
 
     assign word_address = address[ADDR_WIDTH_BYTES-1:2];
     assign data_out     = memory[word_address];
