@@ -62,7 +62,7 @@ module id_stage (
             end
 
             OP_REG_IMM: begin
-                if (funct3 == ALU_SLL || funct3 == ALU_SRL) 
+                if (alu_op_e'({1'b0, funct3}) == ALU_SLL || alu_op_e'({1'b0, funct3}) == ALU_SRL) 
                     id_ex.alu_op    = alu_op_e'({funct7[5], funct3});
                 else
                     id_ex.alu_op    = alu_op_e'({1'b0, funct3});
