@@ -24,15 +24,18 @@ module mem_stage (
     logic [15:0] selected_half;
     logic [7:0]  selected_byte;   
 
-    logic [31:0] ld_byte_ext            = {{24{selected_byte[7]}}, selected_byte};
-    logic [31:0] ld_half_ext            = {{16{selected_half[15]}}, selected_half};
-    logic [31:0] ld_byte_unsigned_ext   = {24'd0, selected_byte};
-    logic [31:0] ld_half_unsigned_ext   = {16'd0, selected_half};
+    logic [31:0] ld_byte_ext;       
+    logic [31:0] ld_half_ext;        
+    logic [31:0] ld_byte_unsigned_ext;   
+    logic [31:0] ld_half_unsigned_ext;   
 
     logic [31:0] mem_data_adjusted;
 
-
-    assign selected_half = (ex_mem.alu_result[1]) ? mem_data[31:16] : mem_data[15:0];
+    assign ld_byte_ext              = {{24{selected_byte[7]}}, selected_byte};
+    assign ld_half_ext              = {{16{selected_half[15]}}, selected_half};
+    assign ld_byte_unsigned_ext     = {24'd0, selected_byte};
+    assign ld_half_unsigned_ext     = {16'd0, selected_half};
+    assign selected_half            = (ex_mem.alu_result[1]) ? mem_data[31:16] : mem_data[15:0];
 
     
     always_comb begin : select_load_byte
