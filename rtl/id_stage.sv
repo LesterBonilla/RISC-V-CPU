@@ -119,6 +119,7 @@ module id_stage (
             OP_JALR: begin
                 id_ex.imm_extended  = imm_I;
 
+                id_ex.jump          = 1'b1;
                 id_ex.pc_target_src = TARGET_SRC_RS1;
 
                 id_ex.reg_write     = 1'b1;
