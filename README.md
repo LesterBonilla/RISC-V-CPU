@@ -8,6 +8,8 @@ This project implements an in-order 5-stage RV32I processor in System Verilog. T
 
 This project implements pipelining through the basic 5 stages: Fetch, Decode, Execute, Memory access, and Writeback. Hazard control is implemented for load-use stalls, forwarding to EX from MEM and WB, and flushing the pipeline for jumps and branches. Currently all instructions are passing the RV32I riscv-arch-test tests.
 
+![Diagram of the core's pipeline organization](/docs/Pipeline%20Architecture.svg)
+
 ## Roadmap
 
 - Configure test generation from riscv-arch-test to output tests for RV32I configuration
@@ -25,6 +27,7 @@ This project implements pipelining through the basic 5 stages: Fetch, Decode, Ex
 - Support for M extension
 
 ### Dependencies
+
 riscv-arch-tests
 riscv32 compiler
 modelsim (will update to questa soon)
