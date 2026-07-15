@@ -52,6 +52,9 @@ module id_stage (
         id_ex.opcode        = opcode;
 
         unique case (opcode)
+//------------------------------------------------------------------------------
+// RV32I Base
+//------------------------------------------------------------------------------
             OP_REG_REG: begin
                 id_ex.alu_op        = alu_op_e'({funct7[5], funct3});
                 id_ex.alu_src_a     = ALU_SRC_A_REG;
@@ -148,6 +151,33 @@ module id_stage (
 
                 id_ex.mem_write     = 1'b1;
                 id_ex.store_op      = store_op_e'(funct3[1:0]);
+            end
+
+//------------------------------------------------------------------------------
+// Zicsr Extension
+//------------------------------------------------------------------------------
+            OP_SYSTEM: begin
+                // CSRRW:
+                // Read CSR, write it to rd
+                // Read rs1, write it to CSR
+                // If rd = x0, do not read
+                // If rs1 = x0, write 0 to CSR
+
+                // CSRRS: 
+                // Read CSR, write it to rd
+                // Read rs1, use it as a bit mask to set CSR bits
+                // If rs1 = x0, do not write
+                
+                // CSRRC:
+                // Read CSR, write it to rd
+                // Read rs1, use it as a bit mask to clear CSR bits
+                // If rs1 = x0, do not write
+
+                // The non-immediate forms use rs1 for write/mask value
+                // The immediate forms use instruction[19:15] as a zero-extended write/mask value
+                // CSRRSI/CSRRCI (like the two above) do not write if the immediate value is 0
+                // For CSRRWI, if rd = x0, do not read
+
             end
 
             default: ;

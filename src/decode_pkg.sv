@@ -11,7 +11,7 @@ package decode_pkg;
         OP_STORE    = 7'b0100011,
         OP_REG_REG  = 7'b0110011,
         OP_FENCE    = 7'b0001111,
-        OP_SYSTEM   = 7'b1110011
+        OP_SYSTEM   = 7'b1110011,
     } opcode_e;
 
     // This matches with {funct7[5], funct3} to account for funct3 overlap between
