@@ -9,7 +9,7 @@ module archtest_tb;
 //------------------------------------------------------------------------------
     logic clk, rst_n;
 
-    core # (.IMEM_SIZE_WORDS(1024*256), .DMEM_SIZE_WORDS(1024*256)) dut (
+    core # (.MEM_SIZE_WORDS(1024*256)) dut (
         .clk    (clk),
         .rst_n  (rst_n)
     );
@@ -51,12 +51,11 @@ module archtest_tb;
 // Memory loading and result checking
 //------------------------------------------------------------------------------
     assign rst_n        = !(curr_state == RESET_TEST);
-    assign test_done    = (dut.dmem_inst.address == TEST_STATUS_ADDR && dut.dmem_inst.write_en == 1'b1);
+    assign test_done    = (dut.memory_inst.dmem_address == TEST_STATUS_ADDR && dut.memory_inst.write_en == 1'b1);
 
     always_ff @(posedge clk) begin
         if (curr_state == RESET_TEST) begin
-            $readmemh(test_hexfiles[test_idx], dut.dmem_inst.memory);
-            $readmemh(test_hexfiles[test_idx], dut.imem_inst.memory);
+            $readmemh(test_hexfiles[test_idx], dut.memory_inst.memory);
         end
 
         if (curr_state == TESTS_DONE) begin
@@ -65,7 +64,7 @@ module archtest_tb;
         end
 
         if (test_done) begin
-            if (dut.dmem_inst.data_in == 32'd1) $display("TEST %0d %s: PASSED", test_idx, test_names[test_idx]);
+            if (dut.memory_inst.data_in == 32'd1) $display("TEST %0d %s: PASSED", test_idx, test_names[test_idx]);
             else begin                               
                 $display("TEST %0d %s: FAILED", test_idx, test_names[test_idx]);
                 $stop;

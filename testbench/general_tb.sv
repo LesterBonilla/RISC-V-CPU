@@ -8,7 +8,7 @@ module general_tb;
 
     localparam logic [31:0] TEST_STATUS_ADDR = 32'hCAFE0000;
 
-    core # (.IMEM_SIZE_WORDS(1024*256), .DMEM_SIZE_WORDS(1024*256)) dut (
+    core # (.MEM_SIZE_WORDS(1024*256)) dut (
         .clk    (clk),
         .rst_n  (rst_n)
     );
@@ -25,16 +25,15 @@ module general_tb;
     end
 
     initial begin
-        $readmemh("../tests/I-jalr-00.hex",dut.imem_inst.memory);
-        $readmemh("../tests/I-jalr-00.hex",dut.dmem_inst.memory);
+        $readmemh("../tests/I-jalr-00.hex",dut.memory_inst.memory);
     end
 
-    assign test_done = (dut.dmem_inst.address == TEST_STATUS_ADDR && dut.dmem_inst.write_en == 1'b1);
+    assign test_done = (dut.memory_inst.dmem_address == TEST_STATUS_ADDR && dut.memory_inst.write_en == 1'b1);
 
     always_ff @(posedge clk) begin
         if (test_done) begin
-            if (dut.dmem_inst.data_in == 32'd1) $display("TEST PASSED");
-            else                                $display("TEST FAILED");
+            if (dut.memory_inst.data_in == 32'd1)   $display("TEST PASSED");
+            else                                    $display("TEST FAILED");
             $stop;
         end
     end

@@ -1,43 +1,38 @@
 module memory # (
-    parameter int IMEM_SIZE_BYTES = 1024,
-    parameter int DMEM_SIZE_BYTES = 1024
+    parameter int NUM_WORDS = 1024
 )(
     input  logic            clk,
 
     input  logic [31:0]     imem_address,
+    output logic [31:0]     imem_data,
     
     input  logic [31:0]     dmem_address,
-    input  logic [31:0]     write_data,
-    input  logic [3:0]      write_mask,
+    input  logic [31:0]     data_in,
+    input  logic [3:0]      byte_en,
     input  logic            write_en,
-    
-    output logic [31:0]     imem_data,
     output logic [31:0]     dmem_data
-
 );
 
-    localparam int IMEM_SIZE_WORDS = IMEM_SIZE_BYTES / 4;
-    localparam int DMEM_SIZE_WORDS = DMEM_SIZE_BYTES / 4;
+    localparam int ADDR_WIDTH_WORDS = $clog2(NUM_WORDS);
+    localparam int ADDR_WIDTH_BYTES = $clog2(NUM_WORDS * 4);
 
-    localparam int IMEM_WIDTH_WORDS = $clog2(IMEM_SIZE_WORDS);
-    localparam int DMEM_WIDTH_WORDS = $clog2(DMEM_SIZE_WORDS);
+    logic [ADDR_WIDTH_WORDS-1:0]    imem_word_address;
+    logic [ADDR_WIDTH_WORDS-1:0]    dmem_word_address;
+    logic [3:0][7:0]                memory[0:NUM_WORDS-1];
 
-    localparam int IMEM_WIDTH_BYTES = $clog2(IMEM_SIZE_BYTES);
-    localparam int DMEM_WIDTH_BYTES = $clog2(IMEM_SIZE_BYTES);
+    assign imem_word_address = imem_address[ADDR_WIDTH_BYTES-1:2];
+    assign dmem_word_address = dmem_address[ADDR_WIDTH_BYTES-1:2];
 
-    logic [31:0] imem [IMEM_SIZE_WORDS-1:0];
-    logic [31:0] dmem [DMEM_SIZE_WORDS-1:0];
-
-    logic [IMEM_WIDTH_WORDS-1:0] imem_word_addr;
-    logic [DMEM_WIDTH_WORDS-1:0] dmem_word_addr;
-
-    assign imem_word_addr = imem_address[IMEM_WIDTH_BYTES-1:2];
-    assign dmem_word_addr = dmem_address[DMEM_WIDTH_BYTES-1:2];
-
+    assign imem_data = memory[imem_word_address];
+    assign dmem_data = memory[dmem_word_address];
     
     always_ff @(posedge clk) begin
-        
+        if (write_en) begin
+            if (byte_en[0]) memory[dmem_word_address][0] <= data_in[7:0];
+            if (byte_en[1]) memory[dmem_word_address][1] <= data_in[15:8];
+            if (byte_en[2]) memory[dmem_word_address][2] <= data_in[23:16];
+            if (byte_en[3]) memory[dmem_word_address][3] <= data_in[31:24]; 
+        end
     end
 
-    
 endmodule
