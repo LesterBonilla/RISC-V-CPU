@@ -12,7 +12,6 @@ module register_file (
 );
 
     logic [31:0] registers [0:31];
-    initial $readmemh("reg.hex", registers);
 
     assign rs1_data = (rs1_addr == 5'd0) ? 32'd0 : registers[rs1_addr];
     assign rs2_data = (rs2_addr == 5'd0) ? 32'd0 : registers[rs2_addr];

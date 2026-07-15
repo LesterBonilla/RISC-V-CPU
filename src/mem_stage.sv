@@ -6,7 +6,7 @@ module mem_stage (
     input logic [31:0]  mem_data,
 
     output logic        mem_write,
-    output logic [3:0]  write_mask,
+    output logic [3:0]  byte_en,
     output logic [31:0] write_data,
     output logic [31:0] mem_address,
     output logic [31:0] alu_result,
@@ -66,22 +66,22 @@ module mem_stage (
 
 
     always_comb begin : store_format
-        write_mask = '0;
+        byte_en = '0;
         write_data = ex_mem.write_data;
 
         unique case (ex_mem.store_op)
             STORE_BYTE: begin
                 write_data = write_data << (8 * ex_mem.alu_result[1:0]);
-                write_mask = 4'b0001 << (ex_mem.alu_result[1:0]);
+                byte_en = 4'b0001 << (ex_mem.alu_result[1:0]);
             end
 
             STORE_HALF: begin
                 write_data = write_data << (16 * ex_mem.alu_result[1]);
-                write_mask = 4'b0011 << (2 * ex_mem.alu_result[1]);
+                byte_en = 4'b0011 << (2 * ex_mem.alu_result[1]);
             end
 
             STORE_WORD:
-                write_mask = 4'b1111;
+                byte_en = 4'b1111;
 
             default: ;
         endcase

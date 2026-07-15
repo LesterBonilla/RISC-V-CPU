@@ -27,7 +27,7 @@ module core # (
 
     // Data memory
     logic [31:0]    mem_write_data, dmem_addr, mem_read_data;
-    logic [3:0]     write_mask;
+    logic [3:0]     byte_en;
     logic           mem_write;
 
     // Hazard control
@@ -61,8 +61,8 @@ module core # (
         .clk            (clk),
         .write_en       (mem_write),
         .address        (dmem_addr),
-        .write_data     (mem_write_data),
-        .write_mask     (write_mask),
+        .data_in        (mem_write_data),
+        .byte_en        (byte_en),
 
         .data_out       (mem_read_data)
     );
@@ -148,7 +148,7 @@ module core # (
         .mem_data       (mem_read_data),
 
         .mem_write      (mem_write),
-        .write_mask     (write_mask),
+        .byte_en        (byte_en),
         .write_data     (mem_write_data),
         .mem_address    (dmem_addr),
         .alu_result     (fwd_data_mem),
