@@ -65,8 +65,11 @@ module archtest_tb;
         end
 
         if (test_done) begin
-            if (dut.dmem_inst.write_data == 32'd1)  $display("TEST %0d %s: PASSED", test_idx, test_names[test_idx]);
-            else                                    $display("TEST %0d %s: FAILED", test_idx, test_names[test_idx]);
+            if (dut.dmem_inst.data_in == 32'd1) $display("TEST %0d %s: PASSED", test_idx, test_names[test_idx]);
+            else begin                               
+                $display("TEST %0d %s: FAILED", test_idx, test_names[test_idx]);
+                $stop;
+            end
         end
     end
 
