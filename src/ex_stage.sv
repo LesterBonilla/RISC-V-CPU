@@ -26,12 +26,27 @@ module ex_stage (
     logic               branch_taken;
     
     assign opcode_ex    = id_ex.opcode;
-    assign pc_target    = ((id_ex.pc_target_src == TARGET_SRC_PC) ? id_ex.pc : rs1_data) + id_ex.imm_extended;
     assign pc_src       = ((branch_taken && id_ex.branch) || id_ex.jump) ? PC_SRC_TARGET : PC_SRC_PC_PLUS4;
 
     assign cmp_eq       = (alu_a == alu_b);
     assign cmp_lt       = ($signed(alu_a) < $signed(alu_b));
     assign cmp_ltu      = (alu_a < alu_b);
+
+
+    always_comb begin : pc_target_calc
+        logic is_JALR;
+        is_JALR     = (id_ex.pc_target_src == TARGET_SRC_RS1);
+        pc_target   = '0;
+
+        unique case (id_ex.pc_target_src)
+            TARGET_SRC_PC:  pc_target = id_ex.pc + id_ex.imm_extended;
+            TARGET_SRC_RS1: pc_target = rs1_data + id_ex.imm_extended;
+            default: ;
+        endcase
+
+        if (is_JALR) 
+            pc_target[0] = 1'b0;
+    end
 
 
     always_comb begin : forward_mux
