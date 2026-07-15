@@ -1,14 +1,13 @@
 module pipeline_register #(
-    parameter type T = logic [31:0]
+    parameter int WIDTH = 32
 )(
     input logic clk,
     input logic rst_n,
     input logic stall,
     input logic flush,
 
-    input T     data_in,
-
-    output T    data_out
+    input logic [WIDTH-1:0]     data_in,
+    output logic [WIDTH-1:0]    data_out
 );
 
     always_ff @(posedge clk or negedge rst_n) begin

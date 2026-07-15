@@ -39,7 +39,7 @@ module core # (
 // Program Counter
 //------------------------------------------------------------------------------
 
-    pipeline_register # (.T(logic [31:0])) pc_reg_inst (
+    pipeline_register # (.WIDTH($bits(pc))) pc_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (stall_pc_if),
@@ -167,7 +167,7 @@ module core # (
 // Pipeline registers
 //------------------------------------------------------------------------------
 
-    pipeline_register # (.T(if_id_reg_t)) if_id_reg_inst (
+    pipeline_register # (.WIDTH($bits(if_id))) if_id_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (stall_if_id),
@@ -177,7 +177,7 @@ module core # (
         .data_out       (if_id)
     );
 
-    pipeline_register # (.T(id_ex_reg_t)) id_ex_reg_inst (
+    pipeline_register # (.WIDTH($bits(id_ex))) id_ex_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (1'b0),
@@ -187,7 +187,7 @@ module core # (
         .data_out       (id_ex)
     );
 
-    pipeline_register # (.T(ex_mem_reg_t)) ex_mem_reg_inst (
+    pipeline_register # (.WIDTH($bits(ex_mem))) ex_mem_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (1'b0),
@@ -197,7 +197,7 @@ module core # (
         .data_out       (ex_mem)
     );
 
-    pipeline_register # (.T(mem_wb_reg_t)) mem_wb_reg_inst (
+    pipeline_register # (.WIDTH($bits(mem_wb))) mem_wb_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (1'b0),
