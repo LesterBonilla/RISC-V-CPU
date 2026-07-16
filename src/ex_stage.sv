@@ -122,6 +122,16 @@ module ex_stage (
         endcase
     end
 
+
+//------------------------------------------------------------------------------
+// Zicsr Extension
+//------------------------------------------------------------------------------
+    logic [31:0]        csr_data;
+    logic               is_csr_imm;
+
+    assign is_csr_imm   = id_ex.csr_op[2];
+    assign csr_data     = (is_csr_imm) ? {{27{0'b0}}, id_ex.rs1_addr} : rs1_data;
+
     
     always_comb begin : ex_mem_reg_input
         // Prevent latches
@@ -141,6 +151,12 @@ module ex_stage (
         // Values calculated by EX stage
         ex_mem.alu_result   = alu_result;
         ex_mem.write_data   = rs2_data;
+
+        // Zicsr Extension
+        ex_mem.csr_addr     = id_ex.imm_extended[11:0];
+        ex_mem.csr_op       = id_ex.csr_op;
+        ex_mem.csr_data     = csr_data;
+
     end
     
 endmodule

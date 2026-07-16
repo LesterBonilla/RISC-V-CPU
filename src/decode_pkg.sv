@@ -11,7 +11,7 @@ package decode_pkg;
         OP_STORE    = 7'b0100011,
         OP_REG_REG  = 7'b0110011,
         OP_FENCE    = 7'b0001111,
-        OP_SYSTEM   = 7'b1110011,
+        OP_SYSTEM   = 7'b1110011
     } opcode_e;
 
     // This matches with {funct7[5], funct3} to account for funct3 overlap between
@@ -43,7 +43,9 @@ package decode_pkg;
     typedef enum logic [1:0] { 
         WB_SRC_ALU,
         WB_SRC_PC_PLUS4,
-        WB_SRC_MEM
+        WB_SRC_MEM,
+        // Zicsr Extension
+        WB_SRC_CSR
     } wb_src_e;
 
     typedef enum logic { 
@@ -79,4 +81,14 @@ package decode_pkg;
         STORE_WORD          = 2'b10
     } store_op_e;
 
+    typedef enum logic [2:0] { 
+        CSR_NOP = 3'b000,
+        CSR_RW  = 3'b001,    
+        CSR_RS  = 3'b010, 
+        CSR_RC  = 3'b011, 
+        CSR_RWI = 3'b101,
+        CSR_RSI = 3'b110,
+        CSR_RCI = 3'b111
+    } csr_op_e;
+    
 endpackage

@@ -36,6 +36,9 @@ package pipeline_pkg;
         store_op_e          store_op;
         pc_target_src_e     pc_target_src;
 
+        // Zicsr Extension
+        csr_op_e            csr_op;
+
         // Data lines
         logic [4:0]         rs1_addr;
         logic [4:0]         rs2_addr;
@@ -59,6 +62,11 @@ package pipeline_pkg;
         load_op_e           load_op;
         store_op_e          store_op;
 
+        // Zicsr Extension
+        csr_op_e            csr_op;
+        logic [11:0]        csr_addr;
+        logic [31:0]        csr_data;
+
         // Data lines
         logic [31:0]        alu_result;
         logic [31:0]        write_data;
@@ -74,6 +82,11 @@ package pipeline_pkg;
         // Control signals
         logic               reg_write;
         wb_src_e            wb_src;
+
+        // Zicsr Extension
+        csr_op_e            csr_op;
+        logic [11:0]        csr_addr;
+        logic [31:0]        csr_data;
 
         // Data lines
         logic [31:0]        alu_result;

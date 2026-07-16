@@ -99,6 +99,11 @@ module mem_stage (
         mem_wb.rd_addr      = ex_mem.rd_addr;
         mem_wb.opcode       = ex_mem.opcode;
         mem_wb.mem_data     = mem_data_adjusted;
+
+        // Zicsr Extension
+        mem_wb.csr_op       = ex_mem.csr_op;
+        mem_wb.csr_data     = ex_mem.csr_data;
+        mem_wb.csr_addr     = ex_mem.csr_addr;
     end
     
 endmodule
