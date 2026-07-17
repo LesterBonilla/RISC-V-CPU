@@ -130,7 +130,7 @@ module ex_stage (
     logic               is_csr_imm;
 
     assign is_csr_imm   = id_ex.csr_op[2];
-    assign csr_data     = (is_csr_imm) ? {{27{0'b0}}, id_ex.rs1_addr} : rs1_data;
+    assign csr_data     = (is_csr_imm) ? {{27{1'b0}}, id_ex.rs1_addr} : rs1_data;
 
     
     always_comb begin : ex_mem_reg_input
