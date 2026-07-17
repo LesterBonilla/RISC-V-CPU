@@ -25,9 +25,10 @@ module archtest_tb;
     } test_state_e;
 
     localparam logic [31:0] TEST_STATUS_ADDR = 32'hCAFE0000;
+    localparam logic [31:0] TEST_IO_ADDR     = 32'hCAFECAFE;
     test_state_e            curr_state, next_state;
     int                     test_idx;
-    logic                   test_done, reset_fsm_n;
+    logic                   test_done, reset_fsm_n, write_io;
 
     always_comb begin : next_test_state
         next_state = curr_state;
@@ -52,6 +53,7 @@ module archtest_tb;
 //------------------------------------------------------------------------------
     assign rst_n        = !(curr_state == RESET_TEST);
     assign test_done    = (dut.memory_inst.dmem_address == TEST_STATUS_ADDR && dut.memory_inst.write_en == 1'b1);
+    assign write_io     = (dut.memory_inst.dmem_address == TEST_IO_ADDR && dut.memory_inst.write_en == 1'b1);
 
     always_ff @(posedge clk) begin
         if (curr_state == RESET_TEST) begin
@@ -63,9 +65,12 @@ module archtest_tb;
             $finish;
         end
 
+        if (write_io) begin
+            $write("%c", dut.memory_inst.data_in[7:0]);
+        end
+
         if (test_done) begin
-            if (dut.memory_inst.data_in == 32'd1) $display("TEST %0d %s: PASSED", test_idx, test_names[test_idx]);
-            else begin                               
+            if (dut.memory_inst.data_in != 32'd1) begin
                 $display("TEST %0d %s: FAILED", test_idx, test_names[test_idx]);
                 $stop;
             end
