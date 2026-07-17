@@ -44,6 +44,16 @@ module csr (
     );
 
 //------------------------------------------------------------------------------
+// Machine Trap-Vector Base-Address (mtvec) Register
+//------------------------------------------------------------------------------
+    mtvec_csr_t mtvec;
+    localparam logic [31:0] MTVEC_ADDR = 32'h00010000;
+    localparam logic [29:0] MTVEC_BASE = MTVEC_ADDR[31:2];
+
+    assign mtvec.base = MTVEC_BASE;
+    assign mtvec.mode = MTVEC_MODE_DIRECT;
+
+//------------------------------------------------------------------------------
 // Address decoding for reading
 //------------------------------------------------------------------------------
     

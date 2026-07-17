@@ -153,6 +153,11 @@ package csr_pkg;
                                     //  1 : Vectored: Asynchronous interrupts set pc to (base + 4 x cause)
     } mtvec_csr_t; 
 
+    typedef enum logic [1:0] { 
+        logic           MTVEC_MODE_DIRECT   = 2'd0, // All traps set pc to mtvec.BASE
+        logic           MTVEC_MODE_VECTORED = 2'd1  // Asynchronous interrupts set pc to mtvec.BASE + (4 x cause)
+    } mtvec_mode_e;
+
     typedef struct packed {
         // Interrupt priority in descending order:
         // MEI, MSI, MTI, SEI, SSI, STI, LCOFI
