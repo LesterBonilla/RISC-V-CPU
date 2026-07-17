@@ -1,4 +1,4 @@
-import csr_pkg::*;
+import decode_pkg::*;
 
 module csr_reg # (
     parameter int WIDTH                     = 32,
