@@ -25,6 +25,25 @@ module csr (
     assign mhartid      = 32'd0; // Required, not implemented
 
 //------------------------------------------------------------------------------
+// Machine Status (mstatus and mstatush) Registers
+//------------------------------------------------------------------------------
+    mstatus_csr_t   mstatus;
+    mstatush_csr_t  mstatus_h;
+    logic           mstatus_en;
+
+    assign mstatus_en   = (address == MSTATUS);
+    assign mstatus_h    = '0;
+
+    csr_reg # (.RESET_VAL = MSTATUS_RESET, .WRITE_MASK = MSTATUS_WR_MASK) mstatus_reg (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .en         (mstatus_en),
+        .csr_op     (csr_op),
+        .data_in    (data_in),
+        .data_out   (data_out)
+    );
+
+//------------------------------------------------------------------------------
 // Address decoding for reading
 //------------------------------------------------------------------------------
     
@@ -40,21 +59,5 @@ module csr (
             default:    data_out = 32'd0;
         endcase
     end
-
-//------------------------------------------------------------------------------
-// Writing
-//------------------------------------------------------------------------------
-
-    // always_ff @(posedge clk) begin
-    //     if (address == EXAMPLE_ADDRESS) begin
-    //         unique case (csr_op)
-    //             CSR_NOP: ;
-    //             CSR_RW, CSR_RWI: example_reg <= data_in;
-    //             CSR_RS, CSR_RSI: example_reg <= example_reg & data_in;
-    //             CSR_RC, CSR_RCI: example_reg <= example_reg & ~data_in;
-    //         endcase
-    //     end
-    // end
-
 
 endmodule

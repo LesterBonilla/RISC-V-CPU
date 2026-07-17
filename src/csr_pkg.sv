@@ -115,6 +115,8 @@ package csr_pkg;
         logic [3:0]     reserved3;  // {S-XLEN[1:0], U-SXLEN[1:0]} Both default to 32 when XLEN = 32.
     } mstatush_csr_t;
 
+    localparam MSTATUSH_WR_MASK = {21'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 4'b0};
+
     typedef struct packed {
         logic           SD;         // Status dirty, read-only 0 if XS, VS, FS are read-only 0
         logic [5:0]     reserved;   // Bits 30:25
@@ -140,6 +142,9 @@ package csr_pkg;
         logic           SIE;        // S-mode global interrupt-enable, read-only 0 if not supported
         logic           reserved4;  // Bit0
     } mstatus_csr_t;
+
+    localparam MSTATUS_WR_MASK  = {1'b0, 6'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 2'b0, 2'b0, 2'b0, 2'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0};
+    localparam MSTATUS_RESET    = 32'h00001800; // Set MPP to 11 = M-Mode
 
     typedef struct packed {
         logic [31:2]    base;       // Vector base address, [XLEN-1:2], low 2 bits are 0 to align with 4-byte boundary
