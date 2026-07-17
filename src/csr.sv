@@ -56,6 +56,8 @@ module csr (
             MARCHID:    data_out = marchid;
             MIMPID:     data_out = mimpid;
             MHARTID:    data_out = mhartid;
+            MSTATUS:    data_out = mstatus;
+            MSTATUSH:   data_out = mstatus_h;
             default:    data_out = 32'd0;
         endcase
     end
