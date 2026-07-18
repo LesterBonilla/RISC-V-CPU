@@ -191,4 +191,33 @@ package csr_pkg;
         logic [30:0]    ex_code;    // Exception code that caused the trap
     } mcause_csr_t;
 
+    typedef enum logic [31:0] { 
+        // Exceptions: bit 31 clear, code[30:0] 24-31 and 48-63 are custom use
+        EXCEPTION_INSTRUCTION_ADDR_MISALIGNED   = {1'b0, 31'd0},
+        EXCEPTION_INSTRUCTION_ACCESS_FAULT      = {1'b0, 31'd1},
+        EXCEPTION_ILLEGAL_INSTRUCTION           = {1'b0, 31'd2},
+        EXCEPTION_BREAKPOINT                    = {1'b0, 31'd3},
+        EXCEPTION_LOAD_ADDR_MISALIGNED          = {1'b0, 31'd4},
+        EXCEPTION_LOAD_ACCESS_FAULT             = {1'b0, 31'd5},
+        EXCEPTION_STORE_AMO_ADDR_MISALIGNED     = {1'b0, 31'd6},
+        EXCEPTION_STORE_AMO_ACCESS_FAULT        = {1'b0, 31'd7},
+        EXCEPTION_ENV_CALL_FROM_U               = {1'b0, 31'd8},
+        EXCEPTION_ENV_CALL_FROM_S               = {1'b0, 31'd9},
+        EXCEPTION_ENV_CALL_FROM_M               = {1'b0, 31'd11},
+        EXCEPTION_INSTRUCTION_PAGE_FAULT        = {1'b0, 31'd12},
+        EXCEPTION_LOAD_PAGE_FAULT               = {1'b0, 31'd13},
+        EXCEPTION_STORE_AMO_PAGE_FAULT          = {1'b0, 31'd15},
+        EXCEPTION_DOUBLE_TRAP                   = {1'b0, 31'd16},
+        EXCEPTION_SOFTWARE_CHECK                = {1'b0, 31'd17},
+        EXCEPTION_HARDWARE_ERROR                = {1'b0, 31'd19},
+        // Interrupts: bit 31 set, code[30:0] >= 16 is platform specific/custom
+        EXCEPTION_SUPERVISOR_SOFTWARE           = {1'b1, 31'd1},
+        EXCEPTION_MACHINE_SOFTWARE              = {1'b1, 31'd3},
+        EXCEPTION_SUPERVISOR_TIMER              = {1'b1, 31'd5},
+        EXCEPTION_MACHINE_TIMER                 = {1'b1, 31'd7},
+        EXCEPTION_SUPERVISOR_EXTERNAL           = {1'b1, 31'd9},
+        EXCEPTION_MACHINE_EXTERNAL              = {1'b1, 31'd11},
+        EXCEPTION_COUNTER_OVERFLOW              = {1'b1, 31'd13}
+    } exception_cause_e;
+
 endpackage
