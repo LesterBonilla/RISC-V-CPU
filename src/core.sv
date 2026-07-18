@@ -34,6 +34,12 @@ module core # (
     logic           stall_pc_if, stall_if_id, flush_if_id, flush_id_ex;
     fwd_sel_e       fwd_sel_a, fwd_sel_b;
 
+    // CSR
+    logic [31:0]    csr_read_data, csr_write_data;
+    logic [11:0]    csr_addr;
+    logic           inst_ret;
+    csr_op_e        csr_op;
+
 //------------------------------------------------------------------------------
 // Program Counter
 //------------------------------------------------------------------------------
@@ -74,6 +80,19 @@ module core # (
 
         .rs1_data       (rs1_data),
         .rs2_data       (rs2_data)
+    );
+
+//------------------------------------------------------------------------------
+// CSR
+//------------------------------------------------------------------------------
+    csr csr_inst (
+        .clk            (clk),
+        .rst_n          (rst_n),
+        .data_in        (csr_write_data),
+        .address        (csr_addr),
+        .csr_op         (csr_op),
+        .inst_ret       (inst_ret),
+        .data_out       (csr_read_data)
     );
 
 //------------------------------------------------------------------------------
@@ -157,7 +176,13 @@ module core # (
 
         .reg_write      (reg_write),
         .rd_addr        (rd_addr),
-        .wb_result      (wb_result)
+        .wb_result      (wb_result),
+
+        .csr_read_data  (csr_read_data),
+        .csr_write_data (csr_write_data),
+        .csr_op         (csr_op),
+        .csr_addr       (csr_addr),
+        .inst_ret       (inst_ret)
     );
 
 //------------------------------------------------------------------------------
