@@ -135,6 +135,91 @@ module csr (
     );
 
 //------------------------------------------------------------------------------
+// Machine Counter-Enable (mcounteren) Register
+//------------------------------------------------------------------------------
+    // Does not exist if U-mode not supported
+
+//------------------------------------------------------------------------------
+// Machine Counter-Inhibit (mcountinhibit) Register
+//------------------------------------------------------------------------------
+    // Does not need to be implemented, will act as read-only 0.
+    // TODO: This register, mcounteren, and the HPMs above can all exist
+    // within their own csr_mcount module. It would be easier to implement
+    // the registers directly instead of reusing csr_reg.
+
+//------------------------------------------------------------------------------
+// Machine Scratch (mscratch) Register
+//------------------------------------------------------------------------------
+    logic [31:0] mscratch;
+
+    csr_reg mscratch_reg (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .en         (address == MSCRATCH),
+        .direct_ld  (1'b0),
+        .csr_op     (csr_op),
+        .data_in    (data_in),
+        .data_out   (mscratch)
+    );
+
+//------------------------------------------------------------------------------
+// Machine Exception Program Counter (mepc) Register
+//------------------------------------------------------------------------------
+    logic [31:0] mepc;
+
+    // TODO: next_mepc is muxed with an exception bit bewteen data_in and pc_in
+
+    csr_reg # (.WRITE_MASK(32'hFFFFFFFC)) mepc_reg ( // Lower two bits are always 0
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .en         (address == MEPC),
+        .direct_ld  (1'b0), // Loaded with PC that caused exception or was interrupted
+        .csr_op     (csr_op),
+        .data_in    (data_in),
+        .data_out   (mepc)
+    );
+
+//------------------------------------------------------------------------------
+// Machine Cause (mcause) Register
+//------------------------------------------------------------------------------
+    // When a trap is taken into M-mode, mcause is written with the exception code.
+    mcause_csr_t mcause;
+
+    // TODO: next_mcause is muxed with an exception bit between data_in and ex_code
+
+    csr_reg mcause_reg (
+        .clk        (clk),
+        .rst_n      (rst_n),
+        .en         (address == MCAUSE),
+        .direct_ld  (1'b0), // Loaded with code for exception/interrupt cause
+        .csr_op     (csr_op),
+        .data_in    (data_in),
+        .data_out   (mcause)
+    );
+
+//------------------------------------------------------------------------------
+// Machine Trap Value (mtval) Register
+//------------------------------------------------------------------------------
+    // On a trap, mtval is set to zero or written with exception-specific information.
+    // If no exceptions set mtval to a non-zero value, mtval is read-only 0.
+
+//------------------------------------------------------------------------------
+// Machine Configuration Pointer (mconfigptr) Register
+//------------------------------------------------------------------------------
+    // Read-only 0 if not implemented. Points to address where a configuration
+    // data structure is held. The data structure is not standardized.
+
+//------------------------------------------------------------------------------
+// Machine Environment Configuration (menvcfg) Register
+//------------------------------------------------------------------------------
+    // If U-mode is not supported, menvcfg/menvcfgh do not exist.
+
+//------------------------------------------------------------------------------
+// Machine Security Configuration (mseccfg) Register
+//------------------------------------------------------------------------------
+    // Exists if any extension adds a field to it.
+
+//------------------------------------------------------------------------------
 // Address decoding for reading
 //------------------------------------------------------------------------------
     
@@ -156,6 +241,9 @@ module csr (
             MCYCLEH:    data_out = mcycle_H;
             MINSTRET:   data_out = minstret_L;
             MINSTRETH:  data_out = minstret_H;
+            MSCRATCH:   data_out = mscratch;
+            MEPC:       data_out = mepc;
+            MCAUSE:     data_out = mcause;
             default:    data_out = 32'd0;
         endcase
     end
