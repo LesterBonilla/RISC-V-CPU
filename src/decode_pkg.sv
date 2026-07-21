@@ -11,7 +11,8 @@ package decode_pkg;
         OP_STORE    = 7'b0100011,
         OP_REG_REG  = 7'b0110011,
         OP_FENCE    = 7'b0001111,
-        OP_SYSTEM   = 7'b1110011
+        OP_SYSTEM   = 7'b1110011,
+        OP_EXCEPT   = 7'b1111111 // Custom for waveform debugging
     } opcode_e;
 
     // This matches with {funct7[5], funct3} to account for funct3 overlap between
@@ -90,5 +91,42 @@ package decode_pkg;
         CSR_RSI = 3'b110,
         CSR_RCI = 3'b111
     } csr_op_e;
+
+    typedef enum logic[11:0] { 
+        SYSTEM_ECALL    = 12'b000000000000,
+        SYSTEM_EBREAK   = 12'b000000000001,
+        SYSTEM_MRET     = 12'b001100000010,
+        SYSTEM_WFI      = 12'b000100000101
+    } priv_op_e;
+
+    typedef enum logic [31:0] { 
+        // Exceptions: bit 31 clear, code[30:0] 24-31 and 48-63 are custom use
+        EXCEPTION_INSTRUCTION_ADDR_MISALIGNED   = {1'b0, 31'd0},
+        EXCEPTION_INSTRUCTION_ACCESS_FAULT      = {1'b0, 31'd1},
+        EXCEPTION_ILLEGAL_INSTRUCTION           = {1'b0, 31'd2},
+        EXCEPTION_BREAKPOINT                    = {1'b0, 31'd3},
+        EXCEPTION_LOAD_ADDR_MISALIGNED          = {1'b0, 31'd4},
+        EXCEPTION_LOAD_ACCESS_FAULT             = {1'b0, 31'd5},
+        EXCEPTION_STORE_AMO_ADDR_MISALIGNED     = {1'b0, 31'd6},
+        EXCEPTION_STORE_AMO_ACCESS_FAULT        = {1'b0, 31'd7},
+        EXCEPTION_ENV_CALL_FROM_U               = {1'b0, 31'd8},
+        EXCEPTION_ENV_CALL_FROM_S               = {1'b0, 31'd9},
+        EXCEPTION_ENV_CALL_FROM_M               = {1'b0, 31'd11},
+        EXCEPTION_INSTRUCTION_PAGE_FAULT        = {1'b0, 31'd12},
+        EXCEPTION_LOAD_PAGE_FAULT               = {1'b0, 31'd13},
+        EXCEPTION_STORE_AMO_PAGE_FAULT          = {1'b0, 31'd15},
+        EXCEPTION_DOUBLE_TRAP                   = {1'b0, 31'd16},
+        EXCEPTION_SOFTWARE_CHECK                = {1'b0, 31'd17},
+        EXCEPTION_HARDWARE_ERROR                = {1'b0, 31'd19},
+        EXCEPTION_NONE                          = {1'b0, 31'd24}, // Custom, for waveform
+        // Interrupts: bit 31 set, code[30:0] >= 16 is platform specific/custom
+        INTERRUPT_SUPERVISOR_SOFTWARE           = {1'b1, 31'd1},
+        INTERRUPT_MACHINE_SOFTWARE              = {1'b1, 31'd3},
+        INTERRUPT_SUPERVISOR_TIMER              = {1'b1, 31'd5},
+        INTERRUPT_MACHINE_TIMER                 = {1'b1, 31'd7},
+        INTERRUPT_SUPERVISOR_EXTERNAL           = {1'b1, 31'd9},
+        INTERRUPT_MACHINE_EXTERNAL              = {1'b1, 31'd11},
+        INTERRUPT_COUNTER_OVERFLOW              = {1'b1, 31'd13}
+    } mcause_e;
     
 endpackage
