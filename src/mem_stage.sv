@@ -5,6 +5,8 @@ module mem_stage (
     input ex_mem_reg_t  ex_mem,
     input logic [31:0]  mem_data,
 
+    input logic         redirect_wb,
+
     output logic        mem_write,
     output logic [3:0]  byte_en,
     output logic [31:0] write_data,
@@ -16,8 +18,11 @@ module mem_stage (
 
     opcode_e opcode_mem;
     
+    logic       exception;
+    mcause_e    mcause;
+    
     assign opcode_mem   = ex_mem.opcode;
-    assign mem_write    = ex_mem.mem_write && ex_mem.valid;
+    assign mem_write    = ex_mem.mem_write && ex_mem.valid && !ex_mem.exception && !redirect_wb && !exception;
     assign alu_result   = ex_mem.alu_result;
     assign mem_address  = ex_mem.alu_result;
 
@@ -88,8 +93,61 @@ module mem_stage (
     end
 
 
+    always_comb begin : exception_detection
+        exception    = ex_mem.exception;
+        mcause       = ex_mem.mcause;
+
+        if (!ex_mem.exception) begin
+            if (ex_mem.mem_write && mem_address != 32'hCAFECAFE) begin
+                unique case (ex_mem.store_op)
+                    STORE_WORD: begin
+                        if (mem_address[1:0] != 2'd0) begin
+                            exception   = 1'b1;
+                            mcause      = EXCEPTION_STORE_AMO_ADDR_MISALIGNED; 
+                        end
+                    end
+
+                    STORE_HALF: begin
+                        if (mem_address[0]) begin
+                            exception   = 1'b1;
+                            mcause      = EXCEPTION_STORE_AMO_ADDR_MISALIGNED; 
+                        end
+                    end
+                    default: ;
+                endcase
+
+            end else if (opcode_mem == OP_LOAD) begin // TODO: Use a mem_read signal instead. The opcode is just for waveform debugging.
+                unique case (ex_mem.load_op)
+                    LOAD_HALF, LOAD_HALF_UNSIGNED: begin
+                        if (mem_address[0]) begin
+                            exception   = 1'b1;
+                            mcause      = EXCEPTION_LOAD_ADDR_MISALIGNED;
+                        end
+                    end
+
+                    LOAD_WORD: begin
+                        if (mem_address[1:0] != 2'd0) begin
+                            exception   = 1'b1;
+                            mcause      = EXCEPTION_LOAD_ADDR_MISALIGNED;
+                        end
+                    end
+
+                    LOAD_BYTE, LOAD_BYTE_UNSIGNED: ;
+                    default: ;
+                endcase
+            end
+        end
+    end // always_comb exception detection
+
+
     always_comb begin : mem_wb_reg_input
         mem_wb = '0;
+
+        // Update these with mem_stage specific exceptions once they are supported
+        mem_wb.exception    = exception;
+        mem_wb.mcause       = mcause;
+        mem_wb.pc           = ex_mem.pc;
+        mem_wb.mret         = ex_mem.mret;
 
         mem_wb.valid        = ex_mem.valid;
         mem_wb.reg_write    = ex_mem.reg_write;
