@@ -1,5 +1,6 @@
 import decode_pkg::*;
 import pipeline_pkg::*;
+import csr_pkg::*;
 
 module id_stage (
     input   if_id_reg_t     if_id,
@@ -16,7 +17,10 @@ module id_stage (
     logic [4:0]     rd_addr;
     logic [6:0]     funct7;
     logic [2:0]     funct3;
+    logic [11:0]    funct12;
     logic [31:0]    imm_I, imm_S, imm_U, imm_B, imm_J;
+    logic           exception;
+    mcause_e        mcause;
 
     assign opcode   = opcode_e'(if_id.instruction[6:0]);
 
@@ -25,6 +29,7 @@ module id_stage (
     assign rd_addr  = if_id.instruction[11:7];
     assign funct7   = if_id.instruction[31:25];
     assign funct3   = if_id.instruction[14:12];
+    assign funct12  = if_id.instruction[31:20];
 
     assign imm_I    = {{20{if_id.instruction[31]}}, if_id.instruction[31:20]};
     assign imm_S    = {{20{if_id.instruction[31]}}, if_id.instruction[31:25], if_id.instruction[11:7]};
@@ -37,6 +42,9 @@ module id_stage (
 
         // Default value to prevent latches
         id_ex = '0;
+
+        id_ex.exception     = exception;
+        id_ex.mcause        = mcause;
 
         // Values that aren't used this stage
         id_ex.valid         = if_id.valid;
@@ -157,14 +165,83 @@ module id_stage (
 // Zicsr Extension
 //------------------------------------------------------------------------------
             OP_SYSTEM: begin
-                id_ex.reg_write     = 1'b1;
-                id_ex.imm_extended  = imm_I;
-                id_ex.wb_src        = WB_SRC_CSR;
-                id_ex.csr_op        = csr_op_e'(funct3);
+                if (csr_op_e'(funct3) != CSR_NOP) begin
+                    id_ex.reg_write     = 1'b1;
+                    id_ex.wb_src        = WB_SRC_CSR;
+                    id_ex.csr_op        = csr_op_e'(funct3);
+                    id_ex.imm_extended  = imm_I;
+                
+                end else if (priv_op_e'(funct12) == SYSTEM_MRET) begin
+                    id_ex.mret          = 1'b1;
+                end
             end
 
             default: ;
-        endcase
-    end
+        endcase // Opcode control signals
+
+    end // always_comb 
+
+//------------------------------------------------------------------------------
+// Exception Detection
+//------------------------------------------------------------------------------
+    always_comb begin
+        exception   = if_id.exception;
+        mcause      = if_id.mcause;
+
+        if (!exception) begin // Don't check if instruction has already faulted
+            unique case (opcode)
+                OP_SYSTEM: begin
+                    if (csr_op_e'(funct3) == CSR_NOP) begin
+                        unique case (priv_op_e'(funct12))
+                            SYSTEM_ECALL:   begin 
+                                exception = 1'b1;
+                                mcause    = EXCEPTION_ENV_CALL_FROM_M; // FROM_X if X-mode supported
+                            end
+
+                            SYSTEM_EBREAK:  begin 
+                                exception = 1'b1;
+                                mcause    = EXCEPTION_BREAKPOINT;
+                            end
+
+                            SYSTEM_MRET:    ; // May except if S-mode is supported 
+                            SYSTEM_WFI:     ; // Currently implemented as NOP
+
+                            default: begin
+                                exception = 1'b1;
+                                mcause    = EXCEPTION_ILLEGAL_INSTRUCTION;
+                            end
+                        endcase
+                    end 
+                    else begin // Illegal CSR
+                        logic [11:0] csr_addr;
+                        logic seed;
+
+                        csr_addr    = imm_I[11:0];
+                        seed        = (csr_addr == 12'h015);
+                        
+                        if (seed) begin
+                            exception = 1'b1;
+                            mcause    = EXCEPTION_ILLEGAL_INSTRUCTION;
+                        end
+                    end
+                end
+
+                // Currently no exceptions for these opcodes
+                OP_LUI, OP_AUIPC, OP_JAL, OP_JALR, OP_BRANCH, OP_LOAD, OP_REG_IMM, OP_STORE, OP_REG_REG, OP_FENCE: ;
+
+                default: begin
+                    exception = 1'b1;
+                    mcause    = EXCEPTION_ILLEGAL_INSTRUCTION;
+                end
+
+            endcase // Instruction exception detection
+        end // If !exception
+
+        if (!if_id.valid) begin // Bubbles should not cause an exception
+            exception = 1'b0;
+            mcause    = EXCEPTION_NONE;
+        end
+
+    end // always_comb exceptions
 
 endmodule
