@@ -272,6 +272,4 @@ module core # (
         .data_out       (mem_wb)
     );
 
-
-
 endmodule
