@@ -19,10 +19,15 @@ module id_stage (
     logic [2:0]     funct3;
     logic [11:0]    funct12;
     logic [31:0]    imm_I, imm_S, imm_U, imm_B, imm_J;
-    logic           exception;
+    logic           exception, is_shift;
     mcause_e        mcause;
+    csr_op_e        csr_op;
+    priv_op_e       priv_op;
 
     assign opcode   = opcode_e'(if_id.instruction[6:0]);
+    assign csr_op   = csr_op_e'(funct3);
+    assign priv_op  = priv_op_e'(funct12);
+    assign is_shift = (funct3 == 3'b001) || (funct3 == 3'b101);
 
     assign rs1_addr = if_id.instruction[19:15];
     assign rs2_addr = if_id.instruction[24:20];
@@ -43,6 +48,7 @@ module id_stage (
         // Default value to prevent latches
         id_ex = '0;
 
+        // Exceptions
         id_ex.exception     = exception;
         id_ex.mcause        = mcause;
 
@@ -73,11 +79,7 @@ module id_stage (
             end
 
             OP_REG_IMM: begin
-                if (alu_op_e'({1'b0, funct3}) == ALU_SLL || alu_op_e'({1'b0, funct3}) == ALU_SRL) 
-                    id_ex.alu_op    = alu_op_e'({funct7[5], funct3});
-                else
-                    id_ex.alu_op    = alu_op_e'({1'b0, funct3});
-                
+                id_ex.alu_op        = alu_op_e'({is_shift ? funct7[5] : 1'b0, funct3});
                 id_ex.imm_extended  = imm_I;
                 id_ex.alu_src_a     = ALU_SRC_A_REG;
                 id_ex.alu_src_b     = ALU_SRC_B_IMM;
@@ -161,24 +163,22 @@ module id_stage (
                 id_ex.store_op      = store_op_e'(funct3[1:0]);
             end
 
-//------------------------------------------------------------------------------
-// Zicsr Extension
-//------------------------------------------------------------------------------
             OP_SYSTEM: begin
-                if (csr_op_e'(funct3) != CSR_NOP) begin
+                if (csr_op != CSR_NOP) begin
                     id_ex.reg_write     = 1'b1;
                     id_ex.wb_src        = WB_SRC_CSR;
-                    id_ex.csr_op        = csr_op_e'(funct3);
+                    id_ex.csr_op        = csr_op;
                     id_ex.imm_extended  = imm_I;
                 
-                end else if (priv_op_e'(funct12) == SYSTEM_MRET) begin
+                end else if (priv_op == SYSTEM_MRET) begin
                     id_ex.mret          = 1'b1;
                 end
             end
 
+            OP_FENCE: ; // Treated as NOP
+
             default: ;
         endcase // Opcode control signals
-
     end // always_comb 
 
 //------------------------------------------------------------------------------
@@ -188,14 +188,14 @@ module id_stage (
         exception   = if_id.exception;
         mcause      = if_id.mcause;
 
-        if (!exception) begin // Don't check if instruction has already faulted
+        if (!exception && id_ex.valid) begin
             unique case (opcode)
                 OP_SYSTEM: begin
-                    if (csr_op_e'(funct3) == CSR_NOP) begin
-                        unique case (priv_op_e'(funct12))
+                    if (csr_op == CSR_NOP) begin
+                        unique case (priv_op)
                             SYSTEM_ECALL:   begin 
                                 exception = 1'b1;
-                                mcause    = EXCEPTION_ENV_CALL_FROM_M; // FROM_X if X-mode supported
+                                mcause    = EXCEPTION_ENV_CALL_FROM_M;
                             end
 
                             SYSTEM_EBREAK:  begin 
@@ -213,11 +213,8 @@ module id_stage (
                         endcase
                     end 
                     else begin // Illegal CSR
-                        logic [11:0] csr_addr;
                         logic seed;
-
-                        csr_addr    = imm_I[11:0];
-                        seed        = (csr_addr == 12'h015);
+                        seed = (funct12 == 12'h015);
                         
                         if (seed) begin
                             exception = 1'b1;
@@ -235,13 +232,7 @@ module id_stage (
                 end
 
             endcase // Instruction exception detection
-        end // If !exception
-
-        if (!if_id.valid) begin // Bubbles should not cause an exception
-            exception = 1'b0;
-            mcause    = EXCEPTION_NONE;
-        end
-
+        end // If !exception && id_ex.valid
     end // always_comb exceptions
 
 endmodule
