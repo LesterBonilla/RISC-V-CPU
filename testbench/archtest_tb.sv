@@ -25,10 +25,11 @@ module archtest_tb;
     } test_state_e;
 
     localparam logic [31:0] TEST_STATUS_ADDR = 32'hCAFE0000;
-    localparam logic [31:0] TEST_IO_ADDR     = 32'hCAFECAFE;
+    localparam logic [31:0] TEST_IO_ADDR     = 32'hCAFECAF0;
     test_state_e            curr_state, next_state;
-    int                     test_idx;
+    int                     test_idx, trap_count;
     logic                   test_done, reset_fsm_n, write_io;
+    string                  test_name;
 
     always_comb begin : next_test_state
         next_state = curr_state;
@@ -52,12 +53,14 @@ module archtest_tb;
 // Memory loading and result checking
 //------------------------------------------------------------------------------
     assign rst_n        = !(curr_state == RESET_TEST);
-    assign test_done    = (dut.memory_inst.dmem_address == TEST_STATUS_ADDR && dut.memory_inst.write_en == 1'b1);
-    assign write_io     = (dut.memory_inst.dmem_address == TEST_IO_ADDR && dut.memory_inst.write_en == 1'b1);
+    assign test_done    = (dut.bus_inst.address == TEST_STATUS_ADDR && dut.bus_inst.write_en == 1'b1);
+    assign write_io     = (dut.bus_inst.address == TEST_IO_ADDR && dut.bus_inst.write_en == 1'b1);
 
     always_ff @(posedge clk) begin
         if (curr_state == RESET_TEST) begin
-            $readmemh(test_hexfiles[test_idx], dut.memory_inst.memory);
+            test_name = test_names[test_idx];
+            $readmemh(test_hexfiles[test_idx], dut.bus_inst.memory_inst.memory);
+            trap_count = 0;
         end
 
         if (curr_state == TESTS_DONE) begin
@@ -66,14 +69,18 @@ module archtest_tb;
         end
 
         if (write_io) begin
-            $write("%c", dut.memory_inst.data_in[7:0]);
+            $write("%c", dut.bus_inst.data_in[7:0]);
         end
 
         if (test_done) begin
-            if (dut.memory_inst.data_in != 32'd1) begin
+            if (dut.bus_inst.data_in != 32'd1) begin
                 $display("TEST %0d %s: FAILED", test_idx, test_names[test_idx]);
                 $stop;
             end
+        end
+
+        if (dut.trap_wb == 1) begin
+            trap_count += 1;
         end
     end
 
