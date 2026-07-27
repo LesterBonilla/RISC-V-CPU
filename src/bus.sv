@@ -40,10 +40,11 @@ module bus # (
     assign dmem_en      = (address >= MAIN_MEMORY_START_ADDR && address <= MAIN_MEMORY_END_ADDR);
     assign mtimer_en    = (address >= MTIMER_BASE_ADDR && address <= MTIMER_END_ADDR);
     assign irq_gen_en   = (address >= IRQ_GEN_BASE_ADDR && address <= IRQ_GEN_END_ADDR);
+    assign msip_en      = (address == MSIP_BASE_ADDR);
 
     assign dmem_wr      = dmem_en && write_en;
     assign mtimer_wr    = mtimer_en && write_en;
-    assign irq_gen_wr   = irq_gen_en && write_en;
+    assign irq_gen_wr   = (irq_gen_en || msip_en) && write_en;
 
 //------------------------------------------------------------------------------
 // Modules

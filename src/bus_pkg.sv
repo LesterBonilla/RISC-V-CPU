@@ -7,4 +7,6 @@ package bus_pkg;
     
     localparam MTIMER_BASE_ADDR         = 32'h02004000;
     localparam MTIMER_END_ADDR          = 32'h0200BFFF;
+
+    localparam MSIP_BASE_ADDR           = 32'h02000000;
 endpackage
