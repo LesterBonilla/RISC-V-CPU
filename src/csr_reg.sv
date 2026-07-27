@@ -7,8 +7,8 @@ module csr_reg # (
 )(
     input logic                 clk,
     input logic                 rst_n,
-    input logic                 en,
-    input logic                 direct_ld,
+    input logic                 csr_en,
+    input logic                 overwrite_en,
     input csr_op_e              csr_op,
     input logic [WIDTH-1:0]     data_in,
 
@@ -23,10 +23,10 @@ module csr_reg # (
         if (!rst_n) begin
             data_r <= RESET_VAL;
 
-        end else if (direct_ld) begin
+        end else if (overwrite_en) begin
             data_r <= data_in;
 
-        end else if (en) begin
+        end else if (csr_en) begin
             unique case (csr_op)
                 CSR_NOP: ;
                 CSR_RW, CSR_RWI: data_r <= (data_in & WRITE_MASK);

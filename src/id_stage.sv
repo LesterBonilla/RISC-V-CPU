@@ -1,5 +1,6 @@
 import decode_pkg::*;
 import pipeline_pkg::*;
+import csr_pkg::*;
 
 module id_stage (
     input   if_id_reg_t     if_id,
@@ -16,15 +17,24 @@ module id_stage (
     logic [4:0]     rd_addr;
     logic [6:0]     funct7;
     logic [2:0]     funct3;
+    logic [11:0]    funct12;
     logic [31:0]    imm_I, imm_S, imm_U, imm_B, imm_J;
+    logic           exception, is_shift;
+    mcause_e        mcause;
+    csr_op_e        csr_op;
+    priv_op_e       priv_op;
 
     assign opcode   = opcode_e'(if_id.instruction[6:0]);
+    assign csr_op   = csr_op_e'(funct3);
+    assign priv_op  = priv_op_e'(funct12);
+    assign is_shift = (funct3 == 3'b001) || (funct3 == 3'b101);
 
     assign rs1_addr = if_id.instruction[19:15];
     assign rs2_addr = if_id.instruction[24:20];
     assign rd_addr  = if_id.instruction[11:7];
     assign funct7   = if_id.instruction[31:25];
     assign funct3   = if_id.instruction[14:12];
+    assign funct12  = if_id.instruction[31:20];
 
     assign imm_I    = {{20{if_id.instruction[31]}}, if_id.instruction[31:20]};
     assign imm_S    = {{20{if_id.instruction[31]}}, if_id.instruction[31:25], if_id.instruction[11:7]};
@@ -37,6 +47,10 @@ module id_stage (
 
         // Default value to prevent latches
         id_ex = '0;
+
+        // Exceptions
+        id_ex.exception     = exception;
+        id_ex.mcause        = mcause;
 
         // Values that aren't used this stage
         id_ex.valid         = if_id.valid;
@@ -65,11 +79,7 @@ module id_stage (
             end
 
             OP_REG_IMM: begin
-                if (alu_op_e'({1'b0, funct3}) == ALU_SLL || alu_op_e'({1'b0, funct3}) == ALU_SRL) 
-                    id_ex.alu_op    = alu_op_e'({funct7[5], funct3});
-                else
-                    id_ex.alu_op    = alu_op_e'({1'b0, funct3});
-                
+                id_ex.alu_op        = alu_op_e'({is_shift ? funct7[5] : 1'b0, funct3});
                 id_ex.imm_extended  = imm_I;
                 id_ex.alu_src_a     = ALU_SRC_A_REG;
                 id_ex.alu_src_b     = ALU_SRC_B_IMM;
@@ -153,18 +163,76 @@ module id_stage (
                 id_ex.store_op      = store_op_e'(funct3[1:0]);
             end
 
-//------------------------------------------------------------------------------
-// Zicsr Extension
-//------------------------------------------------------------------------------
             OP_SYSTEM: begin
-                id_ex.reg_write     = 1'b1;
-                id_ex.imm_extended  = imm_I;
-                id_ex.wb_src        = WB_SRC_CSR;
-                id_ex.csr_op        = csr_op_e'(funct3);
+                if (csr_op != CSR_NOP) begin
+                    id_ex.reg_write     = 1'b1;
+                    id_ex.wb_src        = WB_SRC_CSR;
+                    id_ex.csr_op        = csr_op;
+                    id_ex.imm_extended  = imm_I;
+                
+                end else if (priv_op == SYSTEM_MRET) begin
+                    id_ex.mret          = 1'b1;
+                end
             end
 
+            OP_FENCE: ; // Treated as NOP
+
             default: ;
-        endcase
-    end
+        endcase // Opcode control signals
+    end // always_comb 
+
+//------------------------------------------------------------------------------
+// Exception Detection
+//------------------------------------------------------------------------------
+    always_comb begin
+        exception   = if_id.exception;
+        mcause      = if_id.mcause;
+
+        if (!exception && id_ex.valid) begin
+            unique case (opcode)
+                OP_SYSTEM: begin
+                    if (csr_op == CSR_NOP) begin
+                        unique case (priv_op)
+                            SYSTEM_ECALL:   begin 
+                                exception = 1'b1;
+                                mcause    = EXCEPTION_ENV_CALL_FROM_M;
+                            end
+
+                            SYSTEM_EBREAK:  begin 
+                                exception = 1'b1;
+                                mcause    = EXCEPTION_BREAKPOINT;
+                            end
+
+                            SYSTEM_MRET:    ; // May except if S-mode is supported 
+                            SYSTEM_WFI:     ; // Currently implemented as NOP
+
+                            default: begin
+                                exception = 1'b1;
+                                mcause    = EXCEPTION_ILLEGAL_INSTRUCTION;
+                            end
+                        endcase
+                    end 
+                    else begin // Illegal CSR
+                        logic seed;
+                        seed = (funct12 == 12'h015);
+                        
+                        if (seed) begin
+                            exception = 1'b1;
+                            mcause    = EXCEPTION_ILLEGAL_INSTRUCTION;
+                        end
+                    end
+                end
+
+                // Currently no exceptions for these opcodes
+                OP_LUI, OP_AUIPC, OP_JAL, OP_JALR, OP_BRANCH, OP_LOAD, OP_REG_IMM, OP_STORE, OP_REG_REG, OP_FENCE: ;
+
+                default: begin
+                    exception = 1'b1;
+                    mcause    = EXCEPTION_ILLEGAL_INSTRUCTION;
+                end
+
+            endcase // Instruction exception detection
+        end // If !exception && id_ex.valid
+    end // always_comb exceptions
 
 endmodule

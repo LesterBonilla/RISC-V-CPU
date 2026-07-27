@@ -1,8 +1,9 @@
 // Auto-generated. Do not edit.
 
-localparam int NUM_TESTS = 45;
+localparam int NUM_TESTS = 47;
 
 string test_names [NUM_TESTS] = '{
+    "ExceptionsSm-00",
     "I-add-00",
     "I-addi-00",
     "I-and-00",
@@ -42,6 +43,7 @@ string test_names [NUM_TESTS] = '{
     "I-sw-00",
     "I-xor-00",
     "I-xori-00",
+    "InterruptsSm-00",
     "Zicsr-csrrc-00",
     "Zicsr-csrrci-00",
     "Zicsr-csrrs-00",
@@ -51,6 +53,7 @@ string test_names [NUM_TESTS] = '{
 };
 
 string test_hexfiles [NUM_TESTS] = '{
+    "../tests/ExceptionsSm-00.hex",
     "../tests/I-add-00.hex",
     "../tests/I-addi-00.hex",
     "../tests/I-and-00.hex",
@@ -90,6 +93,7 @@ string test_hexfiles [NUM_TESTS] = '{
     "../tests/I-sw-00.hex",
     "../tests/I-xor-00.hex",
     "../tests/I-xori-00.hex",
+    "../tests/InterruptsSm-00.hex",
     "../tests/Zicsr-csrrc-00.hex",
     "../tests/Zicsr-csrrci-00.hex",
     "../tests/Zicsr-csrrs-00.hex",

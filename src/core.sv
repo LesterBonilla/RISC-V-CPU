@@ -1,5 +1,6 @@
 import decode_pkg::*;
 import pipeline_pkg::*;
+import csr_pkg::*;
 
 module core # (
     parameter int MEM_SIZE_WORDS = 1024
@@ -15,7 +16,7 @@ module core # (
     mem_wb_reg_t    mem_wb, mem_wb_next;
 
     // PC
-    logic [31:0]    pc, pc_next, pc_target;
+    logic [31:0]    pc, pc_next, pc_target_ex, pc_target_wb;
     logic [31:0]    instruction;
     pc_src_e        pc_src_ex;
 
@@ -31,7 +32,8 @@ module core # (
 
     // Hazard control
     logic [31:0]    fwd_data_mem, wb_result;
-    logic           stall_pc_if, stall_if_id, flush_if_id, flush_id_ex;
+    logic           stall_pc_if, stall_if_id, stall_id_ex;
+    logic           flush_if_id, flush_id_ex, flush_ex_mem, flush_mem_wb;
     fwd_sel_e       fwd_sel_a, fwd_sel_b;
 
     // CSR
@@ -39,6 +41,12 @@ module core # (
     logic [11:0]    csr_addr;
     logic           inst_ret;
     csr_op_e        csr_op;
+
+    // Traps/Exceptions/Interrupts
+    logic           trap_wb, mret_wb, redirect_wb;
+    logic [31:0]    mie_csr, mepc_csr, mstatus_csr, mtvec_csr;
+    logic [31:0]    mcause_wb, mepc_wb, mip;
+    mip_mie_csr_t   irq_p;
 
 //------------------------------------------------------------------------------
 // Program Counter
@@ -57,17 +65,18 @@ module core # (
 // Memories
 //------------------------------------------------------------------------------
 
-    memory # (.NUM_WORDS(MEM_SIZE_WORDS)) memory_inst (
+    bus # (.NUM_WORDS(MEM_SIZE_WORDS)) bus_inst (
         .clk            (clk),
+        .rst_n          (rst_n),
 
         .imem_address   (pc),
         .imem_data      (instruction),
-
-        .dmem_address   (dmem_addr),
+        .address        (dmem_addr),
         .data_in        (mem_write_data),
-        .write_en       (mem_write),
         .byte_en        (byte_en),
-        .dmem_data      (mem_read_data)
+        .write_en       (mem_write),
+        .data_out       (mem_read_data),
+        .irq_p          (irq_p)
     );
 
     register_file regfile_inst (
@@ -85,6 +94,7 @@ module core # (
 //------------------------------------------------------------------------------
 // CSR
 //------------------------------------------------------------------------------
+
     csr csr_inst (
         .clk            (clk),
         .rst_n          (rst_n),
@@ -92,6 +102,18 @@ module core # (
         .address        (csr_addr),
         .csr_op         (csr_op),
         .inst_ret       (inst_ret),
+
+        .trap           (trap_wb),
+        .mret           (mret_wb),
+        .mip_in         (irq_p),
+        .mepc_in        (mepc_wb),
+        .mcause_in      (mcause_wb),
+
+        .mie_out        (mie_csr),
+        .mepc_out       (mepc_csr),
+        .mstatus_out    (mstatus_csr),
+        .mtvec_out      (mtvec_csr),
+
         .data_out       (csr_read_data)
     );
 
@@ -115,10 +137,14 @@ module core # (
         .rd_wb          (mem_wb.rd_addr),
         .reg_write_wb   (mem_wb.reg_write),
 
+        .redirect_wb    (redirect_wb),
+
         .stall_pc_if    (stall_pc_if),
         .stall_if_id    (stall_if_id),
         .flush_if_id    (flush_if_id),
         .flush_id_ex    (flush_id_ex),
+        .flush_ex_mem   (flush_ex_mem),
+        .flush_mem_wb   (flush_mem_wb),
         .fwd_sel_a      (fwd_sel_a),
         .fwd_sel_b      (fwd_sel_b)
     );
@@ -129,9 +155,12 @@ module core # (
 
     if_stage if_inst (
         .pc             (pc),
-        .pc_target      (pc_target),
+        .pc_target_ex   (pc_target_ex),
         .instruction    (instruction),
-        .pc_src         (pc_src_ex),
+        .pc_src_ex      (pc_src_ex),
+
+        .redirect_wb    (redirect_wb),
+        .pc_target_wb   (pc_target_wb),
 
         .pc_next        (pc_next),
         .if_id          (if_id_next)
@@ -154,7 +183,7 @@ module core # (
         .fwd_data_mem   (fwd_data_mem),
         .fwd_data_wb    (wb_result),
 
-        .pc_target      (pc_target),
+        .pc_target      (pc_target_ex),
         .pc_src         (pc_src_ex),
         .ex_mem         (ex_mem_next)
     );
@@ -162,6 +191,8 @@ module core # (
     mem_stage mem_inst (
         .ex_mem         (ex_mem),
         .mem_data       (mem_read_data),
+
+        .redirect_wb    (redirect_wb),
 
         .mem_write      (mem_write),
         .byte_en        (byte_en),
@@ -182,7 +213,19 @@ module core # (
         .csr_write_data (csr_write_data),
         .csr_op         (csr_op),
         .csr_addr       (csr_addr),
-        .inst_ret       (inst_ret)
+        .inst_ret       (inst_ret),
+
+        .mip            (irq_p),
+        .mie            (mie_csr),
+        .mstatus        (mstatus_csr),
+        .mtvec          (mtvec_csr),
+        .mepc_in        (mepc_csr),
+        .trap           (trap_wb),
+        .mret           (mret_wb),
+        .redirect       (redirect_wb),
+        .mcause         (mcause_wb),
+        .mepc_out       (mepc_wb),
+        .pc_target      (pc_target_wb)
     );
 
 //------------------------------------------------------------------------------
@@ -213,7 +256,7 @@ module core # (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (1'b0),
-        .flush          (1'b0),
+        .flush          (flush_ex_mem),
         .data_in        (ex_mem_next),
 
         .data_out       (ex_mem)
@@ -223,12 +266,10 @@ module core # (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (1'b0),
-        .flush          (1'b0),
+        .flush          (flush_mem_wb),
         .data_in        (mem_wb_next),
 
         .data_out       (mem_wb)
     );
-
-
 
 endmodule
