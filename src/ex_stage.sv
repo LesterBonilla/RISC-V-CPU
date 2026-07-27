@@ -152,7 +152,7 @@ module ex_stage (
         // Prevent latches
         ex_mem = '0;
 
-        // TODO: Update these with ex_stage specific exceptions once they are implemented
+        // Exceptions
         ex_mem.exception    = exception;
         ex_mem.mcause       = mcause;
         ex_mem.pc           = id_ex.pc;
