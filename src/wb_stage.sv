@@ -114,8 +114,7 @@ module wb_stage (
     end // always_comb handle_trap_source
 
     always_comb begin : calculate_trap_pc_target        
-        pc_target       = '0;        
-        // TODO: Add support for rw mtvec and vectored mode
+        pc_target = '0;        
         if (mret & !valid_irq)  pc_target = mepc_in;
         else                    pc_target = mtvec;
     end
@@ -134,7 +133,7 @@ module wb_stage (
     assign csr_op           = mem_wb.csr_op;
     assign inst_ret         = mem_wb.valid && !mem_wb.exception; // Valid means not a bubble
 
-    always_comb begin
+    always_comb begin : wb_result_mux
         wb_result = '0;
 
         unique case (mem_wb.wb_src) 
