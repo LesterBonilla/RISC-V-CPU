@@ -17,10 +17,16 @@ module hazard_control (
     input logic         reg_write_wb,
     input logic [4:0]   rd_wb,
 
+    input logic         redirect_wb,
+
     output logic        stall_pc_if,
     output logic        stall_if_id,
+
     output logic        flush_if_id,
     output logic        flush_id_ex,
+    output logic        flush_ex_mem,
+    output logic        flush_mem_wb,
+
     output fwd_sel_e    fwd_sel_a,
     output fwd_sel_e    fwd_sel_b
 );
@@ -61,16 +67,29 @@ module hazard_control (
     //      We also assume that instructions reads are single-cycle, but if we introduce a memory hierarchy to imem,
     //      we will need to stall the PC register and flush the IF/ID register while waiting for the memory.
 
-    logic load_stall;
+    logic load_stall, csr_stall;
 
     // ID stage needs memory data from the address currently being calculated in EX stage
-    assign load_stall   = (wb_src_ex == WB_SRC_MEM) && (rs1_id == rd_ex || rs2_id == rd_ex) && (rd_ex != 5'd0);
-    assign stall_pc_if  = load_stall;
-    assign stall_if_id  = load_stall;
+    assign load_stall   = (wb_src_ex == WB_SRC_MEM) && (rs1_id == rd_ex || rs2_id == rd_ex) && (rd_ex != 5'd0) && !redirect_wb;
+    assign stall_pc_if  = load_stall || csr_stall;
+    assign stall_if_id  = load_stall || csr_stall;
 
-    // Flush IF/ID only on branch/jump, flush ID/EX on branch/jump/load_stall
-    assign flush_if_id  = (pc_src_ex == PC_SRC_TARGET);
-    assign flush_id_ex  = (pc_src_ex == PC_SRC_TARGET) || (load_stall);
+    // ID stage needs CSR data from instruction at EX that won't be populated in it reaches WB
+    assign csr_stall    = (wb_src_ex == WB_SRC_CSR) && (rs1_id == rd_ex || rs2_id == rd_ex) && (rd_ex != 5'd0) && !redirect_wb;
+
+    // Branches/Jumps
+    logic   branch_jump;
+    assign  branch_jump = (pc_src_ex == PC_SRC_TARGET);
+
+    // Flush sources:
+    // IF_ID: branch/jump, traps, mret
+    // ID_EX: branch/jump, load_stall, traps, mret, csr_stall
+    // EX_MEM: traps, mret
+    // MEM_WB: traps, mret
+    assign flush_if_id  = branch_jump || redirect_wb;
+    assign flush_id_ex  = branch_jump || redirect_wb || load_stall || csr_stall;
+    assign flush_ex_mem = redirect_wb;
+    assign flush_mem_wb = redirect_wb;
 
     always_comb begin
         fwd_sel_a   = FWD_NONE;
