@@ -9,6 +9,10 @@ package pipeline_pkg;
     } fwd_sel_e;
 
     typedef struct packed {
+        // Exceptions
+        logic               exception;
+        mcause_e            mcause;
+
         logic               valid;
 
         // Data lines
@@ -19,6 +23,11 @@ package pipeline_pkg;
     } if_id_reg_t;
 
     typedef struct packed {
+        // Exceptions
+        logic               exception;
+        logic               mret;
+        mcause_e            mcause;
+
         logic               valid;
         opcode_e            opcode;
 
@@ -52,6 +61,12 @@ package pipeline_pkg;
     } id_ex_reg_t;
 
     typedef struct packed {
+        // Exceptions
+        logic               exception;
+        logic               mret;
+        mcause_e            mcause;
+        logic [31:0]        pc;
+
         logic               valid;
         opcode_e            opcode;
 
@@ -76,8 +91,14 @@ package pipeline_pkg;
     } ex_mem_reg_t;
 
     typedef struct packed {
-        logic               valid;
+        // Exceptions
+        logic               exception;
+        logic               mret;
+        mcause_e            mcause;
+        logic [31:0]        pc;
+
         opcode_e            opcode;
+        logic               valid;
         
         // Control signals
         logic               reg_write;
