@@ -143,7 +143,7 @@ package csr_pkg;
         logic           reserved4;  // Bit0
     } mstatus_csr_t;
 
-    localparam MSTATUS_WR_MASK  = {1'b0, 6'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 2'b0, 2'b0, 2'b0, 2'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0};
+    localparam MSTATUS_WR_MASK  = 32'h00001888;
     localparam MSTATUS_RESET    = 32'h00001800; // Set MPP to 11 = M-Mode
 
     typedef struct packed {
