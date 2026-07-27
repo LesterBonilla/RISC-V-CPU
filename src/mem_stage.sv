@@ -74,7 +74,7 @@ module mem_stage (
         byte_en = '0;
         write_data = ex_mem.write_data;
 
-        unique case (ex_mem.store_op)
+        unique case (ex_mem.store_op) // TODO: Check if these shifts synthesize to wires or more complicated shifting
             STORE_BYTE: begin
                 write_data = write_data << (8 * ex_mem.alu_result[1:0]);
                 byte_en = 4'b0001 << (ex_mem.alu_result[1:0]);
@@ -98,7 +98,7 @@ module mem_stage (
         mcause       = ex_mem.mcause;
 
         if (!ex_mem.exception) begin
-            if (ex_mem.mem_write && mem_address != 32'hCAFECAFE) begin
+            if (ex_mem.mem_write) begin
                 unique case (ex_mem.store_op)
                     STORE_WORD: begin
                         if (mem_address[1:0] != 2'd0) begin
@@ -143,7 +143,7 @@ module mem_stage (
     always_comb begin : mem_wb_reg_input
         mem_wb = '0;
 
-        // Update these with mem_stage specific exceptions once they are supported
+        // Exceptions
         mem_wb.exception    = exception;
         mem_wb.mcause       = mcause;
         mem_wb.pc           = ex_mem.pc;
