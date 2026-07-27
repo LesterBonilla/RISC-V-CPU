@@ -14,6 +14,8 @@ module ex_stage (
 );
 
     opcode_e            opcode_ex;
+    logic               exception;
+    mcause_e            mcause;
     
     logic [31:0]        alu_result;
     logic [31:0]        alu_a;
@@ -132,10 +134,29 @@ module ex_stage (
     assign is_csr_imm   = id_ex.csr_op[2];
     assign csr_data     = (is_csr_imm) ? {{27{1'b0}}, id_ex.rs1_addr} : rs1_data;
 
+//------------------------------------------------------------------------------
+// Detect Exceptions
+//------------------------------------------------------------------------------
+    always_comb begin
+        exception   = id_ex.exception;
+        mcause      = id_ex.mcause;
+        
+        if (pc_src == PC_SRC_TARGET && pc_target[1:0] != 2'd0) begin
+            exception   = 1'b1;
+            mcause      = EXCEPTION_INSTRUCTION_ADDR_MISALIGNED;
+        end
+    end
+
     
     always_comb begin : ex_mem_reg_input
         // Prevent latches
         ex_mem = '0;
+
+        // TODO: Update these with ex_stage specific exceptions once they are implemented
+        ex_mem.exception    = exception;
+        ex_mem.mcause       = mcause;
+        ex_mem.pc           = id_ex.pc;
+        ex_mem.mret         = id_ex.mret;
 
         // Values passed along
         ex_mem.valid        = id_ex.valid;
