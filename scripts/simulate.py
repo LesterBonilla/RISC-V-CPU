@@ -42,6 +42,31 @@ def build_arch_tests(
     return result.returncode
 
 
+def select_elfs(elf_dir: Path, extensions: list[str] | None = None, tests: list[str] | None = None) -> list[Path]:
+    """
+    Selects elf files from the given directory, optionally selecting based on extension prefix or entire file name.
+    
+    Returns a list of paths to selected elf files.
+    Warns if no files are found with the selected filter.
+    """
+    if elf_dir.is_file():
+        return [elf_dir]
+
+    elfs: list[Path] = find_elf_files(elf_dir)
+
+    if extensions is not None:
+        # Get elfs that have extention-test-00.elf where extension is in the extension list
+        # split returns a list, so we take only the first element and match to extensions
+        elfs = [elf for elf in elfs if elf.stem.split("-")[0] in extensions]
+    elif tests is not None:
+        elfs = [elf for elf in elfs if elf.stem in tests]
+
+    if not elfs:
+        print(f"Warning: No elf files matched the given filters:\n {extensions if extensions else tests}")
+
+    return elfs
+
+
 def find_elf_files(elf_dir: Path) -> list[Path]:
     """
     Return a list of paths to all .elf files found in elf_dir and its children directories.
