@@ -6,6 +6,8 @@ from pathlib import Path
 import os
 import subprocess
 import argparse
+from generate_sv_header import generate_header
+
 
 PROJECT_ROOT: Path = Path(os.environ["PROJECT_ROOT"])
 CONFIG_FILE: Path = PROJECT_ROOT / "riscv-arch-test-config" / "test_config.yaml"
@@ -13,6 +15,8 @@ ARCH_TESTS_DIR: Path = PROJECT_ROOT / "external" / "riscv-arch-test"
 WORKDIR: Path = PROJECT_ROOT / "tests" / "work"
 ELF_DIR: Path = WORKDIR / "rv32i" / "elfs"
 HEX_DIR: Path = WORKDIR / "hex"
+SV_HEADER: Path = PROJECT_ROOT / "testbench" / "tests.svh"
+
 
 def build_arch_tests(
         config_file: Path,
@@ -88,19 +92,22 @@ def find_elf_files(elf_dir: Path) -> list[Path]:
     return sorted_elfs
 
 
-def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> None:
+def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> list[Path]:
     """
     Converts passed in elfs to hex files. Outputs to hex_dir
     """
     hex_dir.mkdir(parents=True, exist_ok=True)
     count = 0
+    hex_paths: list[Path] = []
 
     for elf in elfs:
-        hexfile = hex_dir / elf.stem
-        subprocess.run(["elf2hex.py", str(elf), str(hexfile.with_suffix(".hex"))])
+        hex_path = hex_dir / elf.stem
+        subprocess.run(["elf2hex.py", str(elf), str(hex_path.with_suffix(".hex"))])
         count += 1
+        hex_paths.append(hex_path)
 
     print(f"Generated {count} hex files")
+    return hex_paths
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -151,8 +158,11 @@ def main():
     build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
 
     # Find the requested elfs, convert them to hex. 
-    elfs = select_elfs(elf_dir=ELF_DIR, extensions=extensions, tests=args.tests)
-    convert_elfs_to_hex(elfs=elfs, hex_dir=HEX_DIR)
+    elfs = select_elfs(elf_dir=ELF_DIR, extensions=args.extensions, tests=args.tests)
+    hex_paths = convert_elfs_to_hex(elfs=elfs, hex_dir=HEX_DIR)
+
+    # Generate .svh header
+    generate_header(hex_paths=hex_paths, output=SV_HEADER)
 
 if __name__ == "__main__":
     main()

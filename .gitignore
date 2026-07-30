@@ -4,3 +4,4 @@ transcript
 quartus
 vsim.wlf
 tests/work
+__pycache__
