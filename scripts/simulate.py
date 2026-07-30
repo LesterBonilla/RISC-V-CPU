@@ -88,16 +88,15 @@ def find_elf_files(elf_dir: Path) -> list[Path]:
     return sorted_elfs
 
 
-def convert_tests_to_hex(elf_dir: Path, hex_dir: Path) -> None:
+def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> None:
     """
-    Converts all riscv-arch-test elfs to hex files. Creates hex_dir if it doesn't exist.
+    Converts passed in elfs to hex files. Outputs to hex_dir
     """
     hex_dir.mkdir(parents=True, exist_ok=True)
-    elfs = find_elf_files(elf_dir)
     count = 0
 
     for elf in elfs:
-        hexfile = hex_dir / elf.with_suffix("").name
+        hexfile = hex_dir / elf.stem
         subprocess.run(["elf2hex.py", str(elf), str(hexfile.with_suffix(".hex"))])
         count += 1
 
@@ -134,14 +133,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument("--gui", "-g", action="store_true", help="Launch ModelSim GUI")
-    parser.add_argument("--debug", "-d", actio="store_true", help="Enable DEBUG mode for riscv-arch-tests build. Outputs signature objdump, trace files, and trap report.")
+    parser.add_argument("--debug", "-d", action="store_true", help="Enable DEBUG mode for riscv-arch-tests build. Outputs signature objdump, trace files, and trap report.")
 
     return parser
 
-def main():
-    build_arch_tests(CONFIG_FILE, WORKDIR)
-    convert_tests_to_hex(ELF_DIR, HEX_DIR)
 
+def main():
+    args = build_parser().parse_args()
+
+    # Get necessary extensions to build
+    if args.tests:
+        extensions = list({test.split("-", 1)[0] for test in args.tests})
+    else:
+        extensions = args.extensions
+
+    # Build the elfs from riscv-arch-tests repo. They are placed in WORKDIR
+    build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
+
+    # Find the requested elfs, convert them to hex. 
+    elfs = select_elfs(elf_dir=ELF_DIR, extensions=extensions, tests=args.tests)
+    convert_elfs_to_hex(elfs=elfs, hex_dir=HEX_DIR)
 
 if __name__ == "__main__":
     main()
