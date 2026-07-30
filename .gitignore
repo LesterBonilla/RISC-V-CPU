@@ -3,3 +3,4 @@ rtl/memory.sv
 transcript
 quartus
 vsim.wlf
+tests/work
