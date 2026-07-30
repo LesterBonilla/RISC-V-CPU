@@ -5,6 +5,7 @@ Main script for compiling riscv-arch-tests, converting them to hex files, and ru
 from pathlib import Path
 import os
 import subprocess
+import argparse
 
 PROJECT_ROOT: Path = Path(os.environ["PROJECT_ROOT"])
 CONFIG_FILE: Path = PROJECT_ROOT / "riscv-arch-test-config" / "test_config.yaml"
@@ -101,7 +102,41 @@ def convert_tests_to_hex(elf_dir: Path, hex_dir: Path) -> None:
         count += 1
 
     print(f"Generated {count} hex files")
-    
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """
+    Add command line flags and descriptions.
+    """
+    parser = argparse.ArgumentParser(
+        prog="simulate.py",
+        description="Main build tool for this project. Builds RISC-V ATC, converts them to hex files, compiles the SystemVerilog project, and runs the testbench.",
+    )
+
+    mutually_exclusive_group = parser.add_mutually_exclusive_group()
+    mutually_exclusive_group.add_argument(
+        "--extensions", "-e", 
+        type=lambda s: [ext.strip() for ext in s.split(",")],
+        metavar="EXT[,EXT...]",
+        help="Only run tests for the passed in extensions (e.g. I, ExceptionsSm)"
+        )
+    mutually_exclusive_group.add_argument(
+        "--tests", "-t",
+        type=lambda s: [ext.strip() for ext in s.split(",")],
+        metavar="TEST[,TEST...]",
+        help="Only run the passed in tests (e.g. I-add-00, Zicsr-csrrc-00)"
+    )
+    mutually_exclusive_group.add_argument(
+        "--elf",
+        type=Path,
+        metavar="path/to/file.elf",
+        help="Convert to hex and run a single arbitrary .elf file"
+    )
+
+    parser.add_argument("--gui", "-g", action="store_true", help="Launch ModelSim GUI")
+    parser.add_argument("--debug", "-d", actio="store_true", help="Enable DEBUG mode for riscv-arch-tests build. Outputs signature objdump, trace files, and trap report.")
+
+    return parser
 
 def main():
     build_arch_tests(CONFIG_FILE, WORKDIR)
