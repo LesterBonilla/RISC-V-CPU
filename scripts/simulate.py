@@ -34,9 +34,20 @@ def build_arch_tests(
     else:
         env["FAST"] = "TRUE"
         env["CLEAN_INTERMEDIATES"] = "TRUE"
+
+    if extensions is not None:
+        env["EXTENSIONS"] = ",".join(extensions)
     
     jobs = os.cpu_count() or 1
     cmd = ["make", f"--jobs={jobs}"]
+
+    print("Running riscv-arch-tests make with environment variables:\n",
+          f"CONFIG_FILES: {str(config_file)}\n",
+          f"WORKDIR: {str(workdir)}\n",
+          f"DEBUG: {"TRUE" if debug else "FALSE"}\n",
+          f"EXTENSIONS: {"NONE" if extensions is None else ",".join(extensions)}\n",
+          f"jobs: {jobs}\n"
+        )
 
     result = subprocess.run(cmd, env=env, cwd=ARCH_TESTS_DIR)
     return result.returncode
