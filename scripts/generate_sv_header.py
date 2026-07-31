@@ -15,7 +15,7 @@ def generate_header(hex_paths: list[Path], output: Path) -> None:
     Input is a list of file paths to .hex files, and the tests.svh is placed in the output path.
     """
     names = [f.stem for f in hex_paths]
-    hex_paths = [f.resolve().as_posix() for f in hex_paths]
+    hex_path_strs = [f.resolve().as_posix() for f in hex_paths]
 
     with output.open("w") as f:
         f.write("// Auto-generated. Do not edit.\n\n")
@@ -25,7 +25,7 @@ def generate_header(hex_paths: list[Path], output: Path) -> None:
         entries = ",\n".join(f'    "{name}"' for name in names)
         f.write(f"string test_names [NUM_TESTS] = {{\n{entries}\n}};\n\n")
         
-        entries = ",\n".join(f'    "{hex_path}"' for hex_path in hex_paths)
+        entries = ",\n".join(f'    "{hex_path}"' for hex_path in hex_path_strs)
         f.write(f"string test_hexfiles [NUM_TESTS] = {{\n{entries}\n}};\n\n")
         
 
