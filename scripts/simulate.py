@@ -12,10 +12,19 @@ from generate_sv_header import generate_header
 PROJECT_ROOT: Path = Path(os.environ["PROJECT_ROOT"])
 CONFIG_FILE: Path = PROJECT_ROOT / "riscv-arch-test-config" / "test_config.yaml"
 ARCH_TESTS_DIR: Path = PROJECT_ROOT / "external" / "riscv-arch-test"
-WORKDIR: Path = PROJECT_ROOT / "tests" / "work"
+BUILD_DIR: Path = PROJECT_ROOT / "build"
+WORKDIR: Path = BUILD_DIR / "riscv-arch-tests-work"
 ELF_DIR: Path = WORKDIR / "rv32i" / "elfs"
 HEX_DIR: Path = WORKDIR / "hex"
-SV_HEADER: Path = PROJECT_ROOT / "testbench" / "tests.svh"
+SV_HEADER: Path = BUILD_DIR / "tests.svh"
+CORE_SRC: Path = PROJECT_ROOT / "src"
+DECODE_PKG: Path = CORE_SRC / "pipeline" / "decode_pkg.sv"
+TB_FILE: Path = PROJECT_ROOT / "testbench" / "archtest_tb.sv"
+SIM_DIR: Path = PROJECT_ROOT / "sim"
+SIM_WORKDIR: Path = BUILD_DIR / "sim-work"
+FILELIST: Path = BUILD_DIR / "filelist.f"
+RUN_GUI_FILE: Path = SIM_DIR / "run_gui.do"
+RUN_CONSOLE_FILE: Path = SIM_DIR / "run_console.do"
 
 
 def build_arch_tests(
