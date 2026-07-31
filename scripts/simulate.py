@@ -113,7 +113,7 @@ def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> list[Path]:
         hex_path = hex_dir / elf.stem
         subprocess.run(["elf2hex.py", str(elf), str(hex_path.with_suffix(".hex"))])
         count += 1
-        hex_paths.append(hex_path)
+        hex_paths.append(hex_path.with_suffix(".hex"))
 
     print(f"Generated {count} hex files")
     return hex_paths
