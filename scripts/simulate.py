@@ -119,6 +119,51 @@ def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> list[Path]:
     return hex_paths
 
 
+def build_sv_filelist(src_dir: Path, tb_file: Path) -> list[Path]:
+    """
+    Return a list of SystemVerilog source files in compilation order.
+    decode_pkg first, then all other packages, then all other *.sv, then the testbench.
+    """
+    all_files = sorted(src_dir.rglob("*.sv"))
+    packages = [file for file in all_files if file != DECODE_PKG and file.stem.endswith("_pkg")]
+    others = [file for file in all_files if file != DECODE_PKG and not file.stem.endswith("_pkg")]
+
+    return [DECODE_PKG, *packages, *others, tb_file]
+
+
+def write_filelist(files: list[Path], output: Path) -> None:
+    """
+    Write a list of file paths. Meant for use with list of SystemVerilog source files
+    ordered by dependency for compilation.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w") as f:
+        f.writelines(f"{path.resolve().as_posix()}\n" for path in files)
+
+
+def run_sim(sim_workdir: Path, filelist: Path, tb_top: Path, gui: bool = False) -> int:
+    """
+    Run .do scripts to compile the rtl source files and testbench, and run the simulation.
+    Optionally run with QuestaSim GUI.
+
+    The run.do files use environment variables to locate their files.
+    See SIM_DIR for .do file specifics.
+    """
+    env = os.environ.copy()
+    env["SIM_WORKDIR"] = str(sim_workdir)
+    env["FILELIST"] = str(filelist)
+    env["TB_TOP"] = str(tb_top.stem)
+    env["BUILD_DIR"] = str(BUILD_DIR)
+    env["SCRIPT_DIR"] = str(SIM_DIR)
+
+    do_file = RUN_GUI_FILE if gui else RUN_CONSOLE_FILE
+    cmd = ["vsim"] if gui else ["vsim", "-c"] 
+    cmd += ["-do", do_file]
+
+    result = subprocess.run(cmd, env=env, cwd=BUILD_DIR)
+    return result.returncode
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     Add command line flags and descriptions.
@@ -172,6 +217,14 @@ def main():
 
     # Generate .svh header
     generate_header(hex_paths=hex_paths, output=SV_HEADER)
+
+    # Generate RTL source file list
+    filelist = build_sv_filelist(src_dir=CORE_SRC, tb_file=TB_FILE)
+    write_filelist(files=filelist, output=FILELIST)
+
+    # Compile rtl source and run vsim
+    run_sim(sim_workdir=SIM_WORKDIR, filelist=FILELIST, tb_top=TB_FILE, gui=args.gui)
+
 
 if __name__ == "__main__":
     main()
