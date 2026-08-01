@@ -66,13 +66,11 @@ def build_arch_tests(
     jobs = os.cpu_count() or 1
     cmd = ["make", f"--jobs={jobs}"]
 
-    print("Running riscv-arch-tests make with environment variables:\n",
-          f"CONFIG_FILES: {str(config_file)}\n",
-          f"WORKDIR: {str(workdir)}\n",
-          f"DEBUG: {"TRUE" if debug else "FALSE"}\n",
-          f"EXTENSIONS: {"NONE" if extensions is None else ",".join(extensions)}\n",
-          f"jobs: {jobs}\n"
-        )
+    print(f"Config:\t\t{str(config_file.relative_to(PROJECT_ROOT))}")
+    print(f"Workdir:\t{str(workdir.relative_to(PROJECT_ROOT))}")
+    print(f"Debug:\t\t{"No" if debug else "Yes"}")
+    print(f"Extensions:\t{"All" if extensions is None else ",".join(extensions)}")
+    print(f"Jobs:\t\t{jobs}\n")
 
     result = subprocess.run(cmd, env=env, cwd=ARCH_TESTS_DIR)
     return result.returncode
@@ -88,7 +86,7 @@ def select_elfs(elf_dir: Path, extensions: list[str] | None = None, tests: list[
     if elf_dir.is_file():
         return [elf_dir]
 
-    elfs: list[Path] = find_elf_files(elf_dir)
+    elfs: list[Path] = sorted(elf_dir.rglob("*.elf"))
 
     if extensions is not None:
         # Get elfs that have extention-test-00.elf where extension is in the extension list
@@ -99,17 +97,10 @@ def select_elfs(elf_dir: Path, extensions: list[str] | None = None, tests: list[
 
     if not elfs:
         print(f"Warning: No elf files matched the given filters:\n {extensions if extensions else tests}")
+    else:
+        print(f"Found:\t\t{len(elfs)}")
 
     return elfs
-
-
-def find_elf_files(elf_dir: Path) -> list[Path]:
-    """
-    Return a list of paths to all .elf files found in elf_dir and its children directories.
-    """
-    sorted_elfs = sorted(elf_dir.rglob("*.elf"))
-    print(f"Found {len(sorted_elfs)} ELF files")
-    return sorted_elfs
 
 
 def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> list[Path]:
@@ -135,8 +126,8 @@ def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> list[Path]:
 
     num_skipped = len(elfs) - num_converted
 
-    print(f"Converted:\t {num_converted}")
-    print(f"Up to date:\t {num_skipped}")
+    print(f"Converted:\t{num_converted}")
+    print(f"Up to date:\t{num_skipped}")
 
     return hex_paths
 
@@ -157,10 +148,19 @@ def write_filelist(files: list[Path], output: Path) -> None:
     """
     Write a list of file paths. Meant for use with list of SystemVerilog source files
     ordered by dependency for compilation.
+
+    Args:
+        files: List of .sv suffixed paths for compilation
+        output: Destination path of .f suffixed filelist
     """
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w") as f:
-        f.writelines(f"{path.resolve().as_posix()}\n" for path in files)
+    text = "\n".join(path.resolve().as_posix() for path in files) + "\n"
+
+    if not output.exists() or output.read_text() != text:
+        output.write_text(text)
+        print(f"{output.relative_to(PROJECT_ROOT)} updated")
+    else:
+        print(f"{output.relative_to(PROJECT_ROOT)} is up to date")
 
 
 def run_sim(sim_workdir: Path, filelist: Path, tb_top: Path, gui: bool = False) -> int:
@@ -231,20 +231,26 @@ def main():
         extensions = args.extensions
 
     # Build the elfs from riscv-arch-tests repo. They are placed in WORKDIR
+    print("=== Building RISC-V Arch Tests ===")
     build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
 
     # Find the requested elfs, convert them to hex. 
+    print("\n=== Converting ELF -> HEX ===")
     elfs = select_elfs(elf_dir=ELF_DIR, extensions=args.extensions, tests=args.tests)
     hex_paths = convert_elfs_to_hex(elfs=elfs, hex_dir=HEX_DIR)
 
     # Generate .svh header
+    print("\n=== Updating testbench header ===")
     generate_header(hex_paths=hex_paths, output=SV_HEADER)
 
     # Generate RTL source file list
+    print("\n=== Updating RTL source filelist ===")
     filelist = build_sv_filelist(src_dir=CORE_SRC, tb_file=TB_FILE)
     write_filelist(files=filelist, output=FILELIST)
 
     # Compile rtl source and run vsim
+    print("\n=== Compiling RTL and running simulation ===")
+    print(f"Mode: {"GUI" if args.gui else "Console"}\n")
     run_sim(sim_workdir=SIM_WORKDIR, filelist=FILELIST, tb_top=TB_FILE, gui=args.gui)
 
 
