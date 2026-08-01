@@ -27,6 +27,17 @@ RUN_GUI_FILE: Path = SIM_DIR / "run_gui.do"
 RUN_CONSOLE_FILE: Path = SIM_DIR / "run_console.do"
 
 
+def is_stale(input: Path, output: Path) -> bool:
+    """
+    Returns bool representing if the output file is older than its dependency.
+    
+    Args:
+        input: Path to file that is depended on by output
+        output: Path to file that might be stale
+    """
+    return (not output.exists() or (input.stat().st_mtime > output.stat().st_mtime))
+
+
 def build_arch_tests(
         config_file: Path,
         workdir: Path,
@@ -103,19 +114,30 @@ def find_elf_files(elf_dir: Path) -> list[Path]:
 
 def convert_elfs_to_hex(elfs: list[Path], hex_dir: Path) -> list[Path]:
     """
-    Converts passed in elfs to hex files. Outputs to hex_dir
+    Converts passed in elfs to hex files if the equivalent hex file doesn't exist or is stale.
+    Prints report of files converted or skipped (if they were up to date).
+
+    Args:
+        elfs: List of paths to elfs. Expects .elf stem to be present
+        hex_dir: Path to folder to place .hex files
     """
     hex_dir.mkdir(parents=True, exist_ok=True)
-    count = 0
+    num_converted = 0
     hex_paths: list[Path] = []
 
     for elf in elfs:
-        hex_path = hex_dir / elf.stem
-        subprocess.run(["elf2hex.py", str(elf), str(hex_path.with_suffix(".hex"))])
-        count += 1
-        hex_paths.append(hex_path.with_suffix(".hex"))
+        hex_path = (hex_dir / elf.stem).with_suffix(".hex")
+        if is_stale(input=elf, output=hex_path):
+            subprocess.run(["elf2hex.py", str(elf), str(hex_path)])
+            num_converted += 1
 
-    print(f"Generated {count} hex files")
+        hex_paths.append(hex_path)
+
+    num_skipped = len(elfs) - num_converted
+
+    print(f"Converted:\t {num_converted}")
+    print(f"Up to date:\t {num_skipped}")
+
     return hex_paths
 
 
