@@ -7,27 +7,44 @@ import argparse
 import os
 
 
+def build_header_text(hex_paths: list[Path]) -> str:
+    """
+    Builds a string for a SystemVerilog header file that includes an
+    array of names and paths for each HEX file in the input list along with
+    the number of elements.
+    """
+    names = [f.stem for f in hex_paths]
+    hex_path_strs = [f.resolve().as_posix() for f in hex_paths]
+
+    text = ("// Auto-generated. Do not edit.\n\n")
+    text += (f"localparam int NUM_TESTS = {len(names)};\n\n")
+
+    entries = ",\n".join(f'    "{name}"' for name in names)
+    text += (f"string test_names [NUM_TESTS] = {{\n{entries}\n}};\n\n")
+
+    entries = ",\n".join(f'    "{hex_path}"' for hex_path in hex_path_strs)
+    text += (f"string test_hexfiles [NUM_TESTS] = {{\n{entries}\n}};")
+
+    return text
+
+
 def generate_header(hex_paths: list[Path], output: Path) -> None:
     """
     Create a system verilog header with two arrays and an array size. 
     The arrays carry matching file path and file names.
 
-    Input is a list of file paths to .hex files, and the tests.svh is placed in the output path.
+    Args:
+        hex_paths: List of .hex suffixed paths
+        output: .svh suffixed destination path of the header
     """
-    names = [f.stem for f in hex_paths]
-    hex_path_strs = [f.resolve().as_posix() for f in hex_paths]
+    text = build_header_text(hex_paths)
 
-    with output.open("w") as f:
-        f.write("// Auto-generated. Do not edit.\n\n")
+    if not output.exists() or output.read_text() != text:
+        output.write_text(text)
+        print(f"{output.relative_to(Path(os.environ["PROJECT_ROOT"]))} updated")
+    else:
+        print(f"{output.relative_to(Path(os.environ["PROJECT_ROOT"]))} is up to date")
 
-        f.write(f"localparam int NUM_TESTS = {len(names)};\n\n")
-
-        entries = ",\n".join(f'    "{name}"' for name in names)
-        f.write(f"string test_names [NUM_TESTS] = {{\n{entries}\n}};\n\n")
-        
-        entries = ",\n".join(f'    "{hex_path}"' for hex_path in hex_path_strs)
-        f.write(f"string test_hexfiles [NUM_TESTS] = {{\n{entries}\n}};\n\n")
-        
 
 def main():
     parser = argparse.ArgumentParser(
