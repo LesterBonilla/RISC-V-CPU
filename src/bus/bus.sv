@@ -19,7 +19,7 @@ module bus # (
     output mip_mie_csr_t    irq_p
 );
 
-    logic dmem_en, mtimer_en, irq_gen_en;
+    logic dmem_en, mtimer_en, irq_gen_en, msip_en;
     logic dmem_wr, mtimer_wr, irq_gen_wr;
     logic irq_msip, irq_meip, irq_mtip;
 
