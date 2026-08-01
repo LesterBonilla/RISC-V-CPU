@@ -1,5 +1,3 @@
-sim/wkdir/
-rtl/memory.sv
-transcript
 quartus
-vsim.wlf
+__pycache__
+build

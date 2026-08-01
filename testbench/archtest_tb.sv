@@ -27,9 +27,9 @@ module archtest_tb;
     localparam logic [31:0] TEST_STATUS_ADDR = 32'hCAFE0000;
     localparam logic [31:0] TEST_IO_ADDR     = 32'hCAFECAF0;
     test_state_e            curr_state, next_state;
-    int                     test_idx, trap_count;
+    int                     test_idx, trap_count, pass_count, fail_count;
     logic                   test_done, reset_fsm_n, write_io;
-    string                  test_name;
+    string                  test_name, failed_tests[$];
 
     always_comb begin : next_test_state
         next_state = curr_state;
@@ -64,7 +64,26 @@ module archtest_tb;
         end
 
         if (curr_state == TESTS_DONE) begin
-            $display("\n===== All tests complete =====\n");
+            $display("===== TEST SUMMARY =====");
+            $display("Total tests: %0d", NUM_TESTS);
+            $display("Passed: %0d", pass_count);
+            $display("Failed: %0d\n", fail_count);
+
+            if (failed_tests.size() > 0) begin
+                $display("Failed tests:");
+
+                foreach(failed_tests[i]) begin
+                    $display(" %s", failed_tests[i]);
+                end
+                $display("To isolate these tests, run:\n");
+                $display("simulate.py --gui --tests ");
+                foreach(failed_tests[i]) begin
+                    if (i == (failed_tests.size() - 1))
+                        $display("%s", failed_tests[i]);
+                    else
+                        $display("%s,", failed_tests[i]);
+                end
+            end
             $finish;
         end
 
@@ -73,9 +92,11 @@ module archtest_tb;
         end
 
         if (test_done) begin
-            if (dut.bus_inst.data_in != 32'd1) begin
-                $display("TEST %0d %s: FAILED", test_idx, test_names[test_idx]);
-                $stop;
+            if (dut.bus_inst.data_in == 32'd1) begin
+                pass_count += 1;
+            end else begin
+                fail_count += 1;
+                failed_tests.push_back(test_names[test_idx]);
             end
         end
 
@@ -104,6 +125,6 @@ module archtest_tb;
         forever #10 clk = ~clk;
     end
 
-    initial $display("\n ==== Starting riscv-arch-tests ====\n");
+    initial $display(" ==== STARTING TESTS ====");
 
 endmodule
