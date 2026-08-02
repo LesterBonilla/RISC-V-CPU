@@ -92,7 +92,7 @@ module bus # (
 
         unique case (1'b1)
             dmem_en:        data_out = dmem_out;
-            irq_gen_out:    data_out = irq_gen_out;
+            irq_gen_en:     data_out = irq_gen_out;
             mtimer_en:      data_out = mtimer_out;
             default:        data_out = '0;
         endcase
