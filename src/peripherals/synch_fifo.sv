@@ -13,7 +13,7 @@ module synch_fifo #(
     output logic                empty,
     output logic                full,
     output logic [WIDTH-1:0]    data_out,
-    
+
     output logic [$clog(depth)-1:0] count
 );
 
@@ -53,6 +53,7 @@ module synch_fifo #(
     assign full     = (read_ptr[PTR_WIDTH] != write_ptr[PTR_WIDTH]) && (read_ptr[PTR_WIDTH-1:0] == write_ptr[PTR_WIDTH-1:0]);
 
     assign data_out = data[read_ptr[PTR_WIDTH-1:0]];
+    assign count    = write_ptr - read_ptr;
 
     always_comb begin
         next_read_ptr   = read_ptr;
