@@ -65,14 +65,18 @@ module uart (
 
     // State machine
     rx_state_e  rx_state, next_rx_state;
-    logic       start_bit_edge;
+    logic [3:0] rx_bit_count, next_rx_bit_count;
+    logic       start_bit_edge, start_valid;
 
-    // Clock Enables
+    // Clock enables
     logic [3:0] bit_div_cnt_rx, next_bit_div_cnt_rx;
     logic       tick_1x_rx, rx_mid_bit;
 
     // Synchronizing
-    logic       rx_sync1, rx_sync2, rx_sync2_prev, rx_falling_edge;
+    logic       rx_sync1, rx_sync2, rx_sync2_prev, rx_falling_edge, rx_sample;
+
+    // Shift register
+    logic [7:0] rx_shift_register, next_rx_shift_register;
 
     //--------------------------------------------------------------------------
     // Rx Clock Enables
@@ -85,7 +89,7 @@ module uart (
         next_bit_div_cnt_rx = bit_div_cnt_rx;
 
         if (start_bit_edge) next_bit_div_cnt_rx = '0;
-        else if (tick_16x)  next_bit_div_cnt_rx = (bit_div_cnt_rx == 4'd15) ? '0 : next_bit_div_cnt_rx + 1'b1;
+        else if (tick_16x)  next_bit_div_cnt_rx = (bit_div_cnt_rx == 4'd15) ? '0 : bit_div_cnt_rx + 1'b1;
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
@@ -97,7 +101,8 @@ module uart (
     // Rx_pin Synchronization and Falling Edge Detection
     //--------------------------------------------------------------------------
 
-    assign rx_falling_edge = (!rx_sync2 && rx_sync2_prev);
+    assign rx_falling_edge  = (!rx_sync2 && rx_sync2_prev);
+    assign rx_sample        = rx_sync2;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -122,8 +127,11 @@ module uart (
         RX_PARITY,
         RX_STOP
     } rx_state_e;
+
+    localparam STOP_BIT_VALUE   = 1'b1;
+    localparam START_BIT_VALUE  = 1'b0;
     
-    assign start_bit_edge = (rx_falling_edge && (rx_state == RX_IDLE));
+    assign start_bit_edge   = (rx_falling_edge && (rx_state == RX_IDLE));
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) rx_state <= RX_IDLE;
@@ -131,26 +139,73 @@ module uart (
     end
 
     always_comb begin
-        next_rx_state = RX_IDLE;
+        next_rx_state = rx_state;
 
         unique case (rx_state)
             RX_IDLE:    begin
                 if (start_bit_edge) next_rx_state = RX_START;
             end
             RX_START:   begin
-                ;
+                if (tick_1x_rx) begin
+                    if (rx_sample == START_BIT_VALUE)
+                        next_rx_state = RX_DATA;
+                    else 
+                        next_rx_state = RX_IDLE;
+                end
             end
             RX_DATA:    begin
-                ;
+                if (tick_1x_rx) begin
+                    if (rx_data_done) next_rx_state = RX_STOP;
+                end                
             end
             RX_PARITY:  begin
-                ;
+                ; // Skipped for now
             end
             RX_STOP:    begin
-                ;
+                // Only one stop bit for now
+                if (tick_1x_rx) begin
+                    if (rx_sample == STOP_BIT_VALUE)
+                        next_rx_state = RX_IDLE;
+                end
             end
             default: ;
         endcase
+    end
+
+    //--------------------------------------------------------------------------
+    // Received Bit Counter
+    //--------------------------------------------------------------------------
+    
+    assign rx_data_done = (rx_bit_count == 4'd7); // TODO: Make this configurable, hard coded for development
+
+    always_comb begin
+        next_rx_bit_count = rx_bit_count;
+
+        if ((rx_state == RX_START) && tick_1x_rx)
+            next_rx_bit_count = '0;
+        else if ((rx_state == RX_DATA) && tick_1x_rx)
+            next_rx_bit_count = rx_bit_count + 1'b1;
+    end
+    
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) rx_bit_count <= '0;
+        else        rx_bit_count <= next_rx_bit_count;
+    end
+
+    //--------------------------------------------------------------------------
+    // Rx Shift Register
+    //--------------------------------------------------------------------------
+
+    assign next_rx_shift_register = ((rx_state == RX_DATA) && rx_mid_bit)   ?
+                                    {rx_sample, rx_shift_register[7:1]}     :
+                                    rx_shift_register;
+    
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rx_shift_register <= '0;
+        end else begin
+            rx_shift_register <= next_rx_shift_register;
+        end
     end
 
 //------------------------------------------------------------------------------
