@@ -1,6 +1,8 @@
 module uart (
     input logic     clk,
-    input logic     rst_n
+    input logic     rst_n,
+
+    input logic     rx_pin
 );
 
 //------------------------------------------------------------------------------
@@ -40,7 +42,7 @@ module uart (
     logic           tick_16x;
     
     assign next_div_cnt = (div_cnt == divisor_r - 1'b1) ? '0 : div_cnt + 1'b1;
-    assign tick_16x     = (div_cnt == '0);
+    assign tick_16x     = (next_div_cnt == '0);
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) div_cnt <= '0;
@@ -50,11 +52,106 @@ module uart (
 //------------------------------------------------------------------------------
 // Receiver
 //------------------------------------------------------------------------------
+    // Rx States:
+    //  IDLE:   The line is high and no data is being received
+    //  START:  Start bit detected (falling edge of synchronized rx_pin)
+    //  DATA:   Sample data bits at each bit's midpoint
+    //  PARITY: If parity is enabled, read parity bit
+    //  STOP:   Read one or two stop bits, return to idle
+    //
+    // The rx_pin is synchronized through a 2-flop synchronizer. This makes sure
+    // the value read is stable before acting on it. A falling rx_pin is detected by
+    // comparing the previous synchronized value to the current synchronized value.
+
+    // State machine
+    rx_state_e  rx_state, next_rx_state;
+    logic       start_bit_edge;
+
+    // Clock Enables
     logic [3:0] bit_div_cnt_rx, next_bit_div_cnt_rx;
-    logic       tick_1x_rx;
+    logic       tick_1x_rx, rx_mid_bit;
 
+    // Synchronizing
+    logic       rx_sync1, rx_sync2, rx_sync2_prev, rx_falling_edge;
 
+    //--------------------------------------------------------------------------
+    // Rx Clock Enables
+    //--------------------------------------------------------------------------
+    
+    assign tick_1x_rx = (next_bit_div_cnt_rx == '0);
+    assign rx_mid_bit = (bit_div_cnt_rx == 4'd7);
 
+    always_comb begin
+        next_bit_div_cnt_rx = bit_div_cnt_rx;
+
+        if (start_bit_edge) next_bit_div_cnt_rx = '0;
+        else if (tick_16x)  next_bit_div_cnt_rx = (bit_div_cnt_rx == 4'd15) ? '0 : next_bit_div_cnt_rx + 1'b1;
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) bit_div_cnt_rx <= '0;
+        else        bit_div_cnt_rx <= next_bit_div_cnt_rx;
+    end
+
+    //--------------------------------------------------------------------------
+    // Rx_pin Synchronization and Falling Edge Detection
+    //--------------------------------------------------------------------------
+
+    assign rx_falling_edge = (!rx_sync2 && rx_sync2_prev);
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rx_sync1        <= '0;
+            rx_sync2        <= '0;
+            rx_sync2_prev   <= '0;
+        end else begin
+            rx_sync1        <= rx_pin;
+            rx_sync2        <= rx_sync1;
+            rx_sync2_prev   <= rx_sync2;
+        end
+    end
+
+    //--------------------------------------------------------------------------
+    // Rx State Machine
+    //--------------------------------------------------------------------------
+
+    typedef enum logic [2:0] { 
+        RX_IDLE,
+        RX_START,
+        RX_DATA,
+        RX_PARITY,
+        RX_STOP
+    } rx_state_e;
+    
+    assign start_bit_edge = (rx_falling_edge && (rx_state == RX_IDLE));
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) rx_state <= RX_IDLE;
+        else        rx_state <= next_rx_state;
+    end
+
+    always_comb begin
+        next_rx_state = RX_IDLE;
+
+        unique case (rx_state)
+            RX_IDLE:    begin
+                if (start_bit_edge) next_rx_state = RX_START;
+            end
+            RX_START:   begin
+                ;
+            end
+            RX_DATA:    begin
+                ;
+            end
+            RX_PARITY:  begin
+                ;
+            end
+            RX_STOP:    begin
+                ;
+            end
+            default: ;
+        endcase
+    end
 
 //------------------------------------------------------------------------------
 // Transmitter
@@ -62,6 +159,12 @@ module uart (
     logic [3:0] bit_div_cnt_tx, next_bit_div_cnt_tx;
     logic       tick_1x_tx;
 
-    
+    assign next_bit_div_cnt_tx  = (bit_div_cnt_tx == 4'd15) ? '0 : bit_div_cnt_tx + 1'b1;
+    assign tick_1x_tx           = (next_bit_div_cnt_tx == '0);
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) bit_div_cnt_tx <= '0;
+        else        bit_div_cnt_tx <= next_bit_div_cnt_tx;
+    end
 
 endmodule
