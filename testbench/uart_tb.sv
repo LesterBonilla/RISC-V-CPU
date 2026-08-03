@@ -50,15 +50,17 @@ module uart_tb;
 
     task automatic read_uart();
         // Read values from the UART, check against the write_queue
-        for (int i = 0; i < write_queue.size(); i++) begin
+        int size = write_queue.size();
+        for (int i = 0; i < size; i++) begin
             read_en     = 1'b1;
             queue_data  = write_queue.pop_front();
             if (queue_data != data_out) 
                 $error("MISMATCH data_out:\nGot: %0h\nExpected: %0h", data_out, queue_data);
             else
-                $info("Read %0h from UART", data_out);
-            @(posedge clk);
+                $display("Read %0h from UART", data_out);
+            @(posedge clk); #0.5;
         end
+        read_en = 0;
     endtask
 
     task automatic write_uart(logic [7:0] data);
@@ -92,9 +94,24 @@ module uart_tb;
 
     task automatic test_writing_one(logic [7:0] data);
         test = "WRITING ONE";
-        $display("TEST: Writing value %0h", data);
+        $display("\n=== TEST: Writing value %0h ===", data);
+        reset_queue();
+        reset_dut();
+        read_en = 0;
         write_uart(data);
         read_uart();    
+    endtask
+
+    task automatic test_write_many();
+        $display("\n=== TEST: Write many ===");
+        reset_queue();
+        read_en = 0;
+        reset_dut();
+        for (int i = 0; i < 16; i++) begin
+            $display("Writing %0h to UART", i);
+            write_uart(i);
+        end
+        read_uart();
     endtask
 
 //------------------------------------------------------------------------------
@@ -106,6 +123,7 @@ module uart_tb;
         read_en = 0;
         reset_dut();
         test_writing_one(8'h77);
+        test_write_many();
         $finish;
     end
 
