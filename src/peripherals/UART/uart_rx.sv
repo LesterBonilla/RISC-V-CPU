@@ -1,57 +1,21 @@
-module uart (
-    input logic         clk,
-    input logic         rst_n,
-
-    input logic         rx_pin,
-    input logic         read_en,
-
-    output logic [7:0]  data_out
-);
-
-//------------------------------------------------------------------------------
-// Registers and Address Map
-//------------------------------------------------------------------------------
-    localparam RX_BUFFER            = 3'b000; // Read only, DLAB = 0
-    localparam TX_HOLDING           = 3'b000; // Write only, DLAB = 0
-    localparam INTERRUPT_ENABLE     = 3'b001; // DLAB = 0
-    localparam INTERRUPT_IDENT      = 3'b010; // Read only
-    localparam FIFO_CONTROL         = 3'b010; // Write only
-    localparam LINE_CONTROL         = 3'b011;
-    localparam MODEM_CONTROL        = 3'b100;
-    localparam LINE_STATUS          = 3'b101;
-    localparam MODEM_STATUS         = 3'b110;
-    localparam SCRATCH              = 3'b111;
-    localparam DIVISOR_LATCH_LOW    = 3'b000; // DLAB = 1
-    localparam DIVISOR_LATCH_HIGH   = 3'b001; // DLAB = 1
-
-    logic [7:0]     rx_buffer_r, tx_holding_r, interrupt_en_r, interrupt_ident_r,
-                    fifo_control_r, line_control_r, modem_control_r, line_status_r,
-                    modem_status_r, scratch_r;
-    logic [15:0]    divisor_r;
-
-//------------------------------------------------------------------------------
-// Baud Rate
-//------------------------------------------------------------------------------
-    // baud_rate = clk_freq / (16 x divisor)
-    // divisor = clk_freq / (baud_rate x 16)
-    // 16 is the oversampling factor. For each bit period, the clock is pulsed 
-    // 16 times and data is sampled halfway through to maximize accuracy.
-    // Every time div_cnt wraps is 1/16th of a bit period
-    // tick_16x is enabled on div_cnt wrap
-    // tick_1x_(rx/tx) is enabled every 16 tick_16x enables (start of next bit period)
-    // bit_div_cnt_(rx/tx) counts tick_16x enables from 0 to 15
-
-    logic [15:0]    div_cnt, next_div_cnt;
-    logic           tick_16x;
+module uart_rx #(
+    parameter int unsigned FIFO_WIDTH   = 8,
+    parameter int unsigned FIFO_DEPTH   = 16
+)(
+    input logic     clk,
+    input logic     rst_n,
+    input logic     tick_16x,
     
-    assign next_div_cnt = (div_cnt == divisor_r - 1'b1) ? '0 : div_cnt + 1'b1;
-    assign tick_16x     = (next_div_cnt == '0);
+    input logic     rx_pin,
+    input logic     rx_fifo_rd_en,
+    input logic     rx_fifo_flush,
+    
+    output logic    rx_fifo_empty,
+    output logic    rx_fifo_full,
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) div_cnt <= '0;
-        else        div_cnt <= next_div_cnt;
-    end
-
+    output logic [$clog2(FIFO_DEPTH):0]     rx_fifo_count,
+    output logic [$clog2(FIFO_WIDTH)-1:0]   rx_fifo_data_out
+);
 //------------------------------------------------------------------------------
 // Receiver
 //------------------------------------------------------------------------------
@@ -91,14 +55,8 @@ module uart (
     // Shift register
     logic [7:0] rx_shift_register, next_rx_shift_register;
 
-    // Rx FIFO
-    localparam int unsigned RX_FIFO_WIDTH = 8;
-    localparam int unsigned RX_FIFO_DEPTH = 16;
-
-    logic [RX_FIFO_WIDTH-1:0]    rx_fifo_data_out, rx_fifo_data_in;
-    logic [$clog2(RX_FIFO_DEPTH):0] rx_fifo_count;
-
-    logic rx_fifo_flush, rx_fifo_wr_en, rx_fifo_rd_en, rx_fifo_empty, rx_fifo_full;
+    // FIFO signals
+    logic [FIFO_WIDTH-1:0]  rx_fifo_data_in;
 
     //--------------------------------------------------------------------------
     // Rx Clock Enables
@@ -229,7 +187,7 @@ module uart (
     // Rx FIFO
     //--------------------------------------------------------------------------
 
-    synch_fifo # (.WIDTH(RX_FIFO_WIDTH), .DEPTH(RX_FIFO_DEPTH)) synch_fifo_inst (
+    synch_fifo # (.WIDTH(FIFO_WIDTH), .DEPTH(FIFO_DEPTH)) synch_fifo_inst (
         .clk        (clk),
         .rst_n      (rst_n),
         .flush      (rx_fifo_flush),
@@ -245,23 +203,5 @@ module uart (
     // TODO: Check when FIFO is full. Is result discarded? What error signal is set?
     assign rx_fifo_data_in  = rx_shift_register;
     assign rx_fifo_wr_en    = rx_frame_done;
-
-    // TODO: Reading from FIFO should go through registers, this is just for testing
-    assign rx_fifo_rd_en    = read_en;
-    assign data_out         = rx_fifo_data_out;
-
-//------------------------------------------------------------------------------
-// Transmitter
-//------------------------------------------------------------------------------
-    logic [3:0] bit_div_cnt_tx, next_bit_div_cnt_tx;
-    logic       tick_1x_tx;
-
-    assign next_bit_div_cnt_tx  = (bit_div_cnt_tx == 4'd15) ? '0 : bit_div_cnt_tx + 1'b1;
-    assign tick_1x_tx           = (next_bit_div_cnt_tx == '0);
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) bit_div_cnt_tx <= '0;
-        else        bit_div_cnt_tx <= next_bit_div_cnt_tx;
-    end
 
 endmodule
