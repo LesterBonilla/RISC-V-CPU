@@ -230,7 +230,7 @@ module uart (
     //--------------------------------------------------------------------------
 
     synch_fifo # (.WIDTH(RX_FIFO_WIDTH), .DEPTH(RX_FIFO_DEPTH)) synch_fifo_inst (
-        .clk        (clk && tick_1x_rx),
+        .clk        (clk),
         .rst_n      (rst_n),
         .flush      (rx_fifo_flush),
         .write_en   (rx_fifo_wr_en),
