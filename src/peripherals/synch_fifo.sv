@@ -14,7 +14,7 @@ module synch_fifo #(
     output logic                full,
     output logic [WIDTH-1:0]    data_out,
 
-    output logic [$clog(depth)-1:0] count
+    output logic [$clog2(DEPTH):0] count
 );
 
     // FIFO flags and count:
@@ -44,7 +44,7 @@ module synch_fifo #(
     // Edge cases:
     //  Simultaneous read/write of a full FIFO should work
 
-    localparam int unsigned PTR_WIDTH = $clog(DEPTH);
+    localparam int unsigned PTR_WIDTH = $clog2(DEPTH);
 
     logic [PTR_WIDTH:0] read_ptr, next_read_ptr, write_ptr, next_write_ptr;
     logic [WIDTH-1:0] data [0:DEPTH-1];
