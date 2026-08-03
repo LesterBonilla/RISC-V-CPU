@@ -1,8 +1,11 @@
 module uart (
-    input logic     clk,
-    input logic     rst_n,
+    input logic         clk,
+    input logic         rst_n,
 
-    input logic     rx_pin
+    input logic         rx_pin,
+    input logic         read_en,
+
+    output logic [7:0]  data_out
 );
 
 //------------------------------------------------------------------------------
@@ -62,11 +65,21 @@ module uart (
     // The rx_pin is synchronized through a 2-flop synchronizer. This makes sure
     // the value read is stable before acting on it. A falling rx_pin is detected by
     // comparing the previous synchronized value to the current synchronized value.
+    //
+    // When the stop state is done, push the data to the FIFO. TODO: Check for errors.
 
     // State machine
+    typedef enum logic [2:0] { 
+        RX_IDLE,
+        RX_START,
+        RX_DATA,
+        RX_PARITY,
+        RX_STOP
+    } rx_state_e;
+
     rx_state_e  rx_state, next_rx_state;
     logic [3:0] rx_bit_count, next_rx_bit_count;
-    logic       start_bit_edge, start_valid;
+    logic       start_bit_edge, start_valid, rx_frame_done, rx_data_done;
 
     // Clock enables
     logic [3:0] bit_div_cnt_rx, next_bit_div_cnt_rx;
@@ -77,6 +90,15 @@ module uart (
 
     // Shift register
     logic [7:0] rx_shift_register, next_rx_shift_register;
+
+    // Rx FIFO
+    localparam int unsigned RX_FIFO_WIDTH = 8;
+    localparam int unsigned RX_FIFO_DEPTH = 16;
+
+    logic [RX_FIFO_WIDTH-1:0]    rx_fifo_data_out, rx_fifo_data_in;
+    logic [$clog2(RX_FIFO_DEPTH):0] rx_fifo_count;
+
+    logic rx_fifo_flush, rx_fifo_wr_en, rx_fifo_rd_en, rx_fifo_empty, rx_fifo_full;
 
     //--------------------------------------------------------------------------
     // Rx Clock Enables
@@ -120,18 +142,12 @@ module uart (
     // Rx State Machine
     //--------------------------------------------------------------------------
 
-    typedef enum logic [2:0] { 
-        RX_IDLE,
-        RX_START,
-        RX_DATA,
-        RX_PARITY,
-        RX_STOP
-    } rx_state_e;
-
     localparam STOP_BIT_VALUE   = 1'b1;
     localparam START_BIT_VALUE  = 1'b0;
     
     assign start_bit_edge   = (rx_falling_edge && (rx_state == RX_IDLE));
+    // TODO: rx_frame_done will likely need some error detection
+    assign rx_frame_done    = (rx_state == RX_STOP && next_rx_state == RX_IDLE);
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) rx_state <= RX_IDLE;
@@ -147,7 +163,7 @@ module uart (
             end
             RX_START:   begin
                 if (tick_1x_rx) begin
-                    if (rx_sample == START_BIT_VALUE)
+                    if (rx_shift_register[7] == START_BIT_VALUE)
                         next_rx_state = RX_DATA;
                     else 
                         next_rx_state = RX_IDLE;
@@ -163,6 +179,7 @@ module uart (
             end
             RX_STOP:    begin
                 // Only one stop bit for now
+                // TODO: Add failure condition to go back to IDLE
                 if (tick_1x_rx) begin
                     if (rx_sample == STOP_BIT_VALUE)
                         next_rx_state = RX_IDLE;
@@ -196,7 +213,7 @@ module uart (
     // Rx Shift Register
     //--------------------------------------------------------------------------
 
-    assign next_rx_shift_register = ((rx_state == RX_DATA) && rx_mid_bit)   ?
+    assign next_rx_shift_register = ((rx_state == RX_DATA || rx_state == RX_START) && rx_mid_bit)   ?
                                     {rx_sample, rx_shift_register[7:1]}     :
                                     rx_shift_register;
     
@@ -207,6 +224,31 @@ module uart (
             rx_shift_register <= next_rx_shift_register;
         end
     end
+
+    //--------------------------------------------------------------------------
+    // Rx FIFO
+    //--------------------------------------------------------------------------
+
+    synch_fifo # (.WIDTH(RX_FIFO_WIDTH), .DEPTH(RX_FIFO_DEPTH)) synch_fifo_inst (
+        .clk        (clk && tick_1x_rx),
+        .rst_n      (rst_n),
+        .flush      (rx_fifo_flush),
+        .write_en   (rx_fifo_wr_en),
+        .read_en    (rx_fifo_rd_en),
+        .data_in    (rx_fifo_data_in),
+        .empty      (rx_fifo_empty),
+        .full       (rx_fifo_full),
+        .data_out   (rx_fifo_data_out),
+        .count      (rx_fifo_count)
+    );
+
+    // TODO: Check when FIFO is full. Is result discarded? What error signal is set?
+    assign rx_fifo_data_in  = rx_shift_register;
+    assign rx_fifo_wr_en    = rx_frame_done;
+
+    // TODO: Reading from FIFO should go through registers, this is just for testing
+    assign rx_fifo_rd_en    = read_en;
+    assign data_out         = rx_fifo_data_out;
 
 //------------------------------------------------------------------------------
 // Transmitter
