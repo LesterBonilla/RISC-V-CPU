@@ -30,16 +30,17 @@ module uart_tb;
 //------------------------------------------------------------------------------
 // DUT
 //------------------------------------------------------------------------------
-    localparam int unsigned FIFO_WIDTH = 8;
+    localparam int unsigned DATA_WIDTH = 8;
     localparam int unsigned FIFO_DEPTH = 16;
 
     logic rx_pin, rx_fifo_rd_en, rx_fifo_flush;
     logic rx_fifo_empty, rx_fifo_full;
+    logic rx_parity_error, rx_framing_error, rx_break_interrupt, rx_overrun_error;
 
     logic [$clog2(FIFO_DEPTH):0]    rx_fifo_count;
-    logic [FIFO_WIDTH-1:0]          data_out;
+    logic [DATA_WIDTH-1:0]          rx_data_out;
 
-    uart_rx #(.FIFO_DEPTH(FIFO_DEPTH), .FIFO_WIDTH(FIFO_WIDTH)) dut (
+    uart_rx #(.FIFO_DEPTH(FIFO_DEPTH)) dut (
         .clk                (clk),
         .rst_n              (rst_n),
         .tick_16x           (clk),
@@ -49,7 +50,11 @@ module uart_tb;
         .rx_fifo_empty      (rx_fifo_empty),
         .rx_fifo_full       (rx_fifo_full),
         .rx_fifo_count      (rx_fifo_count),
-        .rx_fifo_data_out   (data_out)
+        .rx_parity_error    (rx_parity_error),
+        .rx_framing_error   (rx_framing_error),
+        .rx_break_interrupt (rx_break_interrupt),
+        .rx_overrun_error   (rx_overrun_error),
+        .rx_data_out        (rx_data_out)
     );
 
 //------------------------------------------------------------------------------
@@ -81,10 +86,10 @@ module uart_tb;
         for (int i = 0; i < size; i++) begin
             rx_fifo_rd_en = 1'b1;
             queue_data  = write_queue.pop_front();
-            if (queue_data != data_out) 
-                $error("MISMATCH data_out:\nGot: %0h\nExpected: %0h", data_out, queue_data);
+            if (queue_data != rx_data_out) 
+                $error("MISMATCH data_out:\nGot: %0h\nExpected: %0h", rx_data_out, queue_data);
             else
-                $display("Read %0h from UART", data_out);
+                $display("Read %0h from UART", rx_data_out);
             @(posedge clk); #0.5;
         end
         rx_fifo_rd_en = 0;
