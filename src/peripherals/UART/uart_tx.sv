@@ -49,7 +49,7 @@ module uart_tx #(
 
     // Data transmission and data shift register
     logic [7:0]     data_shift_reg, next_data_shift_reg;
-    logic           next_tx_pin;
+    logic           tx_pin_c;
 
     // FIFO
     logic [7:0]     tx_fifo_data_out;
@@ -63,7 +63,7 @@ module uart_tx #(
 
     assign baud_ce              = (over_sample_cnt == 4'd15);
     assign next_oversample_cnt  = (baud_16x_ce) ? 
-                                  (over_sample_cnt == 4'd15) ? '0 : over_sample_cnt + 4'd1 :
+                                  (baud_ce)     ? '0 : over_sample_cnt + 4'd1 :
                                   (over_sample_cnt);
 
     always_ff @(posedge clk or negedge rst_n) begin
@@ -82,22 +82,25 @@ module uart_tx #(
 
     always_comb begin
         next_tx_state = tx_state;
-        unique case (tx_state)
-            UART_IDLE:      if (data_available)                     next_tx_state = UART_START;
-            UART_START:                                             next_tx_state = UART_DATA;
-            UART_DATA:      if (data_done && tx_config.parity_en)   next_tx_state = UART_PARITY;
-                            else if (data_done)                     next_tx_state = UART_STOP;
-            UART_PARITY:                                            next_tx_state = UART_STOP;
-            UART_STOP:      if (two_stops)                          next_tx_state = UART_STOP;
-                            else if (data_available)                next_tx_state = UART_START;
-                            else                                    next_tx_state = UART_IDLE;
-            default:                                                next_tx_state = UART_IDLE;
-        endcase
+
+        if (baud_ce) begin
+            unique case (tx_state)
+                UART_IDLE:      if (data_available)                     next_tx_state = UART_START;
+                UART_START:                                             next_tx_state = UART_DATA;
+                UART_DATA:      if (data_done && tx_config.parity_en)   next_tx_state = UART_PARITY;
+                                else if (data_done)                     next_tx_state = UART_STOP;
+                UART_PARITY:                                            next_tx_state = UART_STOP;
+                UART_STOP:      if (two_stops)                          next_tx_state = UART_STOP;
+                                else if (data_available)                next_tx_state = UART_START;
+                                else                                    next_tx_state = UART_IDLE;
+                default:                                                next_tx_state = UART_IDLE;
+            endcase
+        end
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n)         tx_state <= UART_IDLE;
-        else if (baud_ce)   tx_state <= next_tx_state;
+        if (!rst_n) tx_state <= UART_IDLE;
+        else        tx_state <= next_tx_state;
     end
 
     //--------------------------------------------------------------------------
@@ -107,23 +110,26 @@ module uart_tx #(
     
     always_comb begin
         unique case (tx_config.char_length)
-            LENGTH_5: data_done = (bit_idx == 4'd4);
-            LENGTH_6: data_done = (bit_idx == 4'd5);
-            LENGTH_7: data_done = (bit_idx == 4'd6);
-            LENGTH_8: data_done = (bit_idx == 4'd7);
+            LENGTH_5: data_done = (bit_idx == 3'd4);
+            LENGTH_6: data_done = (bit_idx == 3'd5);
+            LENGTH_7: data_done = (bit_idx == 3'd6);
+            LENGTH_8: data_done = (bit_idx == 3'd7);
             default:  data_done = '0;
         endcase
     end
 
     always_comb begin
-        if (tx_state == UART_DATA)          next_bit_idx = bit_idx + 1'b1;
-        else if (tx_state == UART_START)    next_bit_idx = '0;
-        else                                next_bit_idx = bit_idx;
+        next_bit_idx = bit_idx;
+
+        if (baud_ce) begin
+            if (tx_state == UART_DATA)          next_bit_idx = bit_idx + 1'b1;
+            else if (tx_state == UART_START)    next_bit_idx = '0;
+        end
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n)         bit_idx <= '0;
-        else if (baud_ce)   bit_idx <= next_bit_idx;
+        if (!rst_n) bit_idx <= '0;
+        else        bit_idx <= next_bit_idx;
     end
 
     //--------------------------------------------------------------------------
@@ -148,7 +154,7 @@ module uart_tx #(
                 PARITY_ODD:     next_parity_bit = ^data_shift_reg;
                 PARITY_EVEN:    next_parity_bit = ~(^data_shift_reg);
                 PARITY_STICK_1: next_parity_bit = 1'b1;
-                PARITY_STICK_0: next_parity_bit = 1'b1;
+                PARITY_STICK_0: next_parity_bit = 1'b0;
                 default:        next_parity_bit = '0;
             endcase
         end
@@ -167,19 +173,17 @@ module uart_tx #(
     //--------------------------------------------------------------------------
     // Shift Register
     //--------------------------------------------------------------------------
-    // Load data_shift_reg when next state is START
+    // Load data_shift_reg when state is START
     // Shift next bit into LSB, until data_done is true
 
-    assign tx_fifo_rd_en = (next_tx_state == UART_START);
+    assign tx_fifo_rd_en = ((tx_state == UART_START) && baud_ce);
 
     always_comb begin
         next_data_shift_reg = data_shift_reg;
 
         if (baud_ce) begin
-            if (next_tx_state == UART_START) 
-                next_data_shift_reg = tx_fifo_data_out;
-            else if (tx_state == UART_DATA || tx_state == UART_START) 
-                next_data_shift_reg = {1'b0, data_shift_reg[7:1]};
+            if (tx_state == UART_START)     next_data_shift_reg = tx_fifo_data_out;
+            else if (tx_state == UART_DATA) next_data_shift_reg = {1'b0, data_shift_reg[7:1]};
         end
     end
 
@@ -191,33 +195,24 @@ module uart_tx #(
     //--------------------------------------------------------------------------
     // Transmission
     //--------------------------------------------------------------------------
-    localparam logic STOP_BIT_VALUE = 1'b1;
-    localparam logic START_BIT_VALUE = 1'b0;
-    localparam logic IDLE_BIT_VALUE = 1'b1;
+    localparam logic STOP_BIT_VALUE     = 1'b1;
+    localparam logic IDLE_BIT_VALUE     = 1'b1;
+    localparam logic START_BIT_VALUE    = 1'b0;
 
     always_comb begin
-        next_tx_pin = 1'b1;
-
-        if (baud_ce) begin
-            unique case (tx_state)
-                UART_IDLE:      if (next_tx_state == UART_START)        next_tx_pin = START_BIT_VALUE;
-                                else                                    next_tx_pin = IDLE_BIT_VALUE;
-                UART_START:                                             next_tx_pin = data_shift_reg[0];
-                UART_DATA:      if (next_tx_state == UART_PARITY)       next_tx_pin = parity_bit;
-                                else if (data_done)                     next_tx_pin = STOP_BIT_VALUE;
-                                else                                    next_tx_pin = data_shift_reg[0];
-                UART_PARITY:                                            next_tx_pin = STOP_BIT_VALUE;
-                UART_STOP:      if (next_tx_state == UART_STOP)         next_tx_pin = STOP_BIT_VALUE;
-                                else if (next_tx_state == UART_START)   next_tx_pin = START_BIT_VALUE;
-                                else                                    next_tx_pin = IDLE_BIT_VALUE;
-                default:                                                next_tx_pin = IDLE_BIT_VALUE;
-            endcase
-        end
+        unique case (tx_state)
+            UART_IDLE:      tx_pin_c = IDLE_BIT_VALUE;
+            UART_START:     tx_pin_c = START_BIT_VALUE;
+            UART_DATA:      tx_pin_c = data_shift_reg[0];
+            UART_PARITY:    tx_pin_c = parity_bit;
+            UART_STOP:      tx_pin_c = STOP_BIT_VALUE;
+            default:        tx_pin_c = IDLE_BIT_VALUE;
+        endcase
     end
     
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) tx_pin = 1'b1;
-        else        tx_pin = next_tx_pin;
+        if (!rst_n)         tx_pin <= IDLE_BIT_VALUE;
+        else if (baud_ce)   tx_pin <= tx_pin_c;
     end
 
     //--------------------------------------------------------------------------
