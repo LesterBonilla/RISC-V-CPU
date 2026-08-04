@@ -6,7 +6,8 @@ package uart_pkg;
         RX_DATA,
         RX_PARITY,
         RX_STOP,
-        RX_FRAME_END
+        RX_FRAME_END,
+        RX_BREAK
     } rx_state_e;
 
     typedef struct packed {
