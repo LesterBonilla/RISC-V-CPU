@@ -53,21 +53,21 @@ module uart_rx #(
     //
 
     // State machine
-    rx_state_e  rx_state, next_rx_state;
-    logic [3:0] rx_bit_idx, next_rx_bit_idx;
-    logic       start_bit_edge, rx_frame_done, rx_data_done, start_bit, next_start_bit;
-    logic       stop_bit, next_stop_bit;
+    uart_state_e    rx_state, next_rx_state;
+    logic [3:0]     rx_bit_idx, next_rx_bit_idx;
+    logic           start_bit_edge, rx_frame_done, rx_data_done, start_bit, next_start_bit;
+    logic           stop_bit, next_stop_bit;
 
     // Clock enables
-    logic [3:0] bit_div_cnt_rx, next_bit_div_cnt_rx;
-    logic       tick_1x_rx, rx_mid_bit;
+    logic [3:0]     bit_div_cnt_rx, next_bit_div_cnt_rx;
+    logic           tick_1x_rx, rx_mid_bit;
 
     // Synchronizing
-    logic       rx_sync1, rx_sync2, rx_sync2_prev, rx_falling_edge, rx_sample;
+    logic           rx_sync1, rx_sync2, rx_sync2_prev, rx_falling_edge, rx_sample;
 
     // Frame data
-    logic [7:0] rx_shift_register, next_rx_shift_register, formatted_data;
-    logic       parity_bit, next_parity_bit, calculated_parity, break_int, parity_error;
+    logic [7:0]     rx_shift_register, next_rx_shift_register, formatted_data;
+    logic           parity_bit, next_parity_bit, calculated_parity, break_int, parity_error;
 
     // FIFO signals
     rx_fifo_entry_t rx_fifo_entry_in, rx_fifo_entry_out;
@@ -118,27 +118,28 @@ module uart_rx #(
     // Valid start bit == 0
     // Valid stop bit == 1
     
-    assign start_bit_edge   = ((rx_state == RX_IDLE || rx_state == RX_BREAK) && rx_falling_edge);
-    assign break_cond       = ((rx_state == RX_FRAME_END) && !stop_bit && !start_bit && (formatted_data == 8'd0));
+    assign start_bit_edge   = ((rx_state == UART_IDLE || rx_state == UART_BREAK) && rx_falling_edge);
+    assign break_cond       = ((rx_state == UART_FRAME_END) && !stop_bit && !start_bit && (formatted_data == 8'd0));
 
     always_comb begin
+        next_rx_state = rx_state;
         unique case (rx_state)
-            RX_IDLE:        if (start_bit_edge)                         next_rx_state = RX_START;
-            RX_START:       if (tick_1x_rx && !start_bit)               next_rx_state = RX_DATA;
-                            else if (tick_1x_rx)                        next_rx_state = RX_IDLE;
-            RX_DATA:        if (tick_1x_rx && rx_data_done)             next_rx_state = RX_STOP;
-            RX_PARITY:      if (tick_1x_rx)                             next_rx_state = RX_STOP; 
-            RX_STOP:        if (tick_1x_rx)                             next_rx_state = RX_FRAME_END;
-            RX_FRAME_END:   if (tick_1x_rx && stop_bit && !start_bit)   next_rx_state = RX_DATA;
-                            else if (tick_1x_rx && break_cond)          next_rx_state = RX_BREAK;
-                            else if (tick_1x_rx)                        next_rx_state = RX_IDLE;
-            RX_BREAK:       if (start_bit_edge)                         next_rx_state = RX_START;
-            default:                                                    next_rx_state = RX_IDLE;
+            UART_IDLE:      if (start_bit_edge)                         next_rx_state = UART_START;
+            UART_START:     if (tick_1x_rx && !start_bit)               next_rx_state = UART_DATA;
+                            else if (tick_1x_rx)                        next_rx_state = UART_IDLE;
+            UART_DATA:      if (tick_1x_rx && rx_data_done)             next_rx_state = UART_STOP;
+            UART_PARITY:    if (tick_1x_rx)                             next_rx_state = UART_STOP; 
+            UART_STOP:      if (tick_1x_rx)                             next_rx_state = UART_FRAME_END;
+            UART_FRAME_END: if (tick_1x_rx && stop_bit && !start_bit)   next_rx_state = UART_DATA;
+                            else if (tick_1x_rx && break_cond)          next_rx_state = UART_BREAK;
+                            else if (tick_1x_rx)                        next_rx_state = UART_IDLE;
+            UART_BREAK:     if (start_bit_edge)                         next_rx_state = UART_START;
+            default:                                                    next_rx_state = UART_IDLE;
         endcase
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) rx_state <= RX_IDLE;
+        if (!rst_n) rx_state <= UART_IDLE;
         else        rx_state <= next_rx_state;
     end
 
@@ -159,10 +160,10 @@ module uart_rx #(
     always_comb begin
         next_rx_bit_idx = rx_bit_idx;
 
-        if ((rx_state == RX_START) && tick_1x_rx)
-            next_rx_bit_idx = '0;
-        else if ((rx_state == RX_DATA) && tick_1x_rx)
-            next_rx_bit_idx = rx_bit_idx + 1'b1;
+        if (tick_1x_rx) begin
+            if (next_rx_state == UART_DATA) next_rx_bit_idx = '0;
+            else if (rx_state == UART_DATA) next_rx_bit_idx = rx_bit_idx + 1'b1;
+        end
     end
     
     always_ff @(posedge clk or negedge rst_n) begin
@@ -174,13 +175,13 @@ module uart_rx #(
     // Frame Data
     //--------------------------------------------------------------------------
 
-    assign next_rx_shift_register = ((rx_state == RX_DATA || rx_state == RX_START) && rx_mid_bit) ?
+    assign next_rx_shift_register = ((rx_state == UART_DATA || rx_state == UART_START) && rx_mid_bit) ?
                                     {rx_sample, rx_shift_register[7:1]} :
-                                    rx_shift_register;
+                                    (rx_shift_register);
 
-    assign next_start_bit   = ((rx_state == RX_START || rx_state == RX_FRAME_END) && rx_mid_bit) ? rx_sample : start_bit;
-    assign next_stop_bit    = ((rx_state == RX_STOP) && rx_mid_bit)     ? rx_sample : stop_bit;
-    assign next_parity_bit  = ((rx_state == RX_PARITY) && rx_mid_bit)   ? rx_sample : parity_bit;
+    assign next_start_bit   = ((rx_state == UART_START || rx_state == UART_FRAME_END) && rx_mid_bit) ? rx_sample : start_bit;
+    assign next_stop_bit    = ((rx_state == UART_STOP) && rx_mid_bit)     ? rx_sample : stop_bit;
+    assign next_parity_bit  = ((rx_state == UART_PARITY) && rx_mid_bit)   ? rx_sample : parity_bit;
     
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -201,7 +202,7 @@ module uart_rx #(
             LENGTH_5: formatted_data = {3'b0, rx_shift_register[7:3]};
             LENGTH_6: formatted_data = {2'b0, rx_shift_register[7:2]};
             LENGTH_7: formatted_data = {1'b0, rx_shift_register[7:1]};
-            LENGTH_8: formatted_data = rx_shift_register;
+            LENGTH_8: formatted_data = (rx_shift_register);
             default:  formatted_data = '0;
         endcase
     end
@@ -210,8 +211,8 @@ module uart_rx #(
     // Error Checking and FIFO Data
     //--------------------------------------------------------------------------
 
-    assign rx_frame_done        = (rx_state == RX_FRAME_END && tick_1x_rx);
-    assign rx_fifo_wr_en        = rx_frame_done;
+    assign rx_frame_done        = (rx_state == UART_FRAME_END && tick_1x_rx);
+    assign rx_fifo_wr_en        = (rx_frame_done);
 
     assign rx_data_out          = rx_fifo_entry_out.data;
     assign rx_parity_error      = rx_fifo_entry_out.parity_error;

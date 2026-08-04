@@ -1,14 +1,14 @@
 package uart_pkg;
 
     typedef enum logic [2:0] { 
-        RX_IDLE,
-        RX_START,
-        RX_DATA,
-        RX_PARITY,
-        RX_STOP,
-        RX_FRAME_END,
-        RX_BREAK
-    } rx_state_e;
+        UART_IDLE,
+        UART_START,
+        UART_DATA,
+        UART_PARITY,
+        UART_STOP,
+        UART_FRAME_END,
+        UART_BREAK
+    } uart_state_e;
 
     typedef struct packed {
         logic [7:0] data;
