@@ -1,3 +1,5 @@
+import uart_pkg::*;
+
 module uart_tb;
 
 //------------------------------------------------------------------------------
@@ -36,6 +38,7 @@ module uart_tb;
     logic rx_pin, rx_fifo_rd_en, rx_fifo_flush;
     logic rx_fifo_empty, rx_fifo_full;
     logic rx_parity_error, rx_framing_error, rx_break_interrupt, rx_overrun_error;
+    uart_config_t rx_config;
 
     logic [$clog2(FIFO_DEPTH):0]    rx_fifo_count;
     logic [DATA_WIDTH-1:0]          rx_data_out;
@@ -54,7 +57,8 @@ module uart_tb;
         .rx_framing_error   (rx_framing_error),
         .rx_break_interrupt (rx_break_interrupt),
         .rx_overrun_error   (rx_overrun_error),
-        .rx_data_out        (rx_data_out)
+        .rx_data_out        (rx_data_out),
+        .rx_config          (rx_config)
     );
 
 //------------------------------------------------------------------------------
@@ -77,6 +81,8 @@ module uart_tb;
         rx_pin  = 1;
         rx_fifo_rd_en = 0;
         rx_fifo_flush = 0;
+        rx_config = '0;
+        rx_config.char_length = LENGTH_8;
         reset_dut();
     endtask
 

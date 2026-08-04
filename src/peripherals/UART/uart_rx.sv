@@ -1,3 +1,5 @@
+import uart_pkg::*;
+
 module uart_rx #(
     parameter int unsigned FIFO_DEPTH = 16
 )(
@@ -8,6 +10,8 @@ module uart_rx #(
     input logic         rx_pin,
     input logic         rx_fifo_rd_en,
     input logic         rx_fifo_flush,
+
+    input uart_config_t rx_config,
     
     output logic        rx_fifo_empty,
     output logic        rx_fifo_full,
@@ -24,30 +28,35 @@ module uart_rx #(
 // Receiver
 //------------------------------------------------------------------------------
     // Rx States:
-    //  IDLE:   The line is high and no data is being received
-    //  START:  Start bit detected (falling edge of synchronized rx_pin)
-    //  DATA:   Sample data bits at each bit's midpoint
-    //  PARITY: If parity is enabled, read parity bit
-    //  STOP:   Read one or two stop bits, return to idle
+    //  IDLE:       The line is high and no data is being received
+    //  START:      Start bit detected (falling edge of synchronized rx_pin)
+    //  DATA:       Sample data bits at each bit's midpoint
+    //  PARITY:     If parity is enabled, read parity bit
+    //  STOP:       Read stop bit
+    //  FRAME END:  Package data for FIFO and compute errors. If a start bit
+    //              is detected, go to DATA. If break condition, go to BREAK.
+    //              Else, go to IDLE.
+    //  BREAK:      When the line is held low for longer than one configured frame
+    //              (i.e. Start, Data, Parity, Stop, + 1 bit are all zeros), a 
+    //              break interrupt occurs (stored in FIFO with its received char)
+    //              and the line idles low until the next start bit condition
+    //              occurs (a falling edge of rx_pin)
+    //
+    //  Notes:
+    //      start_bit is sampled in START and FRAME END states, and holds otherwise.
+    //      stop_bit is sampled in STOP, and holds otherwise.
+    //      break_cond reuses the sampled start_bit from FRAME END.
     //
     // The rx_pin is synchronized through a 2-flop synchronizer. This makes sure
     // the value read is stable before acting on it. A falling rx_pin is detected by
     // comparing the previous synchronized value to the current synchronized value.
     //
-    // When the stop state is done, push the data to the FIFO. TODO: Check for errors.
 
     // State machine
-    typedef enum logic [2:0] { 
-        RX_IDLE,
-        RX_START,
-        RX_DATA,
-        RX_PARITY,
-        RX_STOP
-    } rx_state_e;
-
     rx_state_e  rx_state, next_rx_state;
-    logic [3:0] rx_bit_count, next_rx_bit_count;
-    logic       start_bit_edge, start_valid, rx_frame_done, rx_data_done;
+    logic [3:0] rx_bit_idx, next_rx_bit_idx;
+    logic       start_bit_edge, rx_frame_done, rx_data_done, start_bit, next_start_bit;
+    logic       stop_bit, next_stop_bit;
 
     // Clock enables
     logic [3:0] bit_div_cnt_rx, next_bit_div_cnt_rx;
@@ -56,18 +65,11 @@ module uart_rx #(
     // Synchronizing
     logic       rx_sync1, rx_sync2, rx_sync2_prev, rx_falling_edge, rx_sample;
 
-    // Shift register
-    logic [7:0] rx_shift_register, next_rx_shift_register;
-    logic       stop_bit, next_stop_bit, parity_bit, next_parity_bit;
+    // Frame data
+    logic [7:0] rx_shift_register, next_rx_shift_register, formatted_data;
+    logic       parity_bit, next_parity_bit, calculated_parity, break_int, parity_error;
 
     // FIFO signals
-    typedef struct packed {
-        logic [7:0] data;
-        logic       parity_error;
-        logic       framing_error;
-        logic       break_interrupt;
-    } rx_fifo_entry_t;
-
     rx_fifo_entry_t rx_fifo_entry_in, rx_fifo_entry_out;
 
     //--------------------------------------------------------------------------
@@ -112,78 +114,71 @@ module uart_rx #(
     // Rx State Machine
     //--------------------------------------------------------------------------
 
-    localparam STOP_BIT_VALUE   = 1'b1;
-    localparam START_BIT_VALUE  = 1'b0;
+    // The line idles at (rx_pin == 1) for normal operation and (rx_pin == 0) for break
+    // Valid start bit == 0
+    // Valid stop bit == 1
     
-    assign start_bit_edge   = (rx_falling_edge && (rx_state == RX_IDLE || rx_state == RX_STOP));
-    assign rx_frame_done    = (rx_state == RX_STOP && tick_1x_rx);
+    assign start_bit_edge   = ((rx_state == RX_IDLE || rx_state == RX_BREAK) && rx_falling_edge);
+    assign break_cond       = ((rx_state == RX_FRAME_END) && !stop_bit && !start_bit && (formatted_data == 8'd0));
+
+    always_comb begin
+        unique case (rx_state)
+            RX_IDLE:        if (start_bit_edge)                         next_rx_state = RX_START;
+            RX_START:       if (tick_1x_rx && !start_bit)               next_rx_state = RX_DATA;
+                            else if (tick_1x_rx)                        next_rx_state = RX_IDLE;
+            RX_DATA:        if (tick_1x_rx && rx_data_done)             next_rx_state = RX_STOP;
+            RX_PARITY:      if (tick_1x_rx)                             next_rx_state = RX_STOP; 
+            RX_STOP:        if (tick_1x_rx)                             next_rx_state = RX_FRAME_END;
+            RX_FRAME_END:   if (tick_1x_rx && stop_bit && !start_bit)   next_rx_state = RX_DATA;
+                            else if (tick_1x_rx && break_cond)          next_rx_state = RX_BREAK;
+                            else if (tick_1x_rx)                        next_rx_state = RX_IDLE;
+            RX_BREAK:       if (start_bit_edge)                         next_rx_state = RX_START;
+            default:                                                    next_rx_state = RX_IDLE;
+        endcase
+    end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) rx_state <= RX_IDLE;
         else        rx_state <= next_rx_state;
     end
 
-    always_comb begin
-        next_rx_state = rx_state;
-
-        unique case (rx_state)
-            RX_IDLE:    begin
-                if (start_bit_edge) next_rx_state = RX_START;
-            end
-            RX_START:   begin
-                if (tick_1x_rx) begin
-                    if (rx_shift_register[7] == START_BIT_VALUE)
-                        next_rx_state = RX_DATA;
-                    else 
-                        next_rx_state = RX_IDLE;
-                end
-            end
-            RX_DATA:    begin
-                if (tick_1x_rx) begin
-                    if (rx_data_done) next_rx_state = RX_STOP;
-                end                
-            end
-            RX_PARITY:  begin
-                if (tick_1x_rx) next_rx_state = RX_STOP;
-            end
-            RX_STOP:    begin
-                if (tick_1x_rx) begin
-                    if (start_bit_edge) next_rx_state = RX_START;
-                    else                next_rx_state = RX_IDLE;
-                end
-            end
-            default: ;
-        endcase
-    end
-
     //--------------------------------------------------------------------------
     // Received Bit Counter
     //--------------------------------------------------------------------------
     
-    assign rx_data_done = (rx_bit_count == 4'd7); // TODO: Make this configurable, hard coded for development
+    always_comb begin
+        unique case (rx_config.char_length)
+            LENGTH_5: rx_data_done = (rx_bit_idx == 4'd4);
+            LENGTH_6: rx_data_done = (rx_bit_idx == 4'd5);
+            LENGTH_7: rx_data_done = (rx_bit_idx == 4'd6);
+            LENGTH_8: rx_data_done = (rx_bit_idx == 4'd7);
+            default:  rx_data_done = '0;
+        endcase
+    end
 
     always_comb begin
-        next_rx_bit_count = rx_bit_count;
+        next_rx_bit_idx = rx_bit_idx;
 
         if ((rx_state == RX_START) && tick_1x_rx)
-            next_rx_bit_count = '0;
+            next_rx_bit_idx = '0;
         else if ((rx_state == RX_DATA) && tick_1x_rx)
-            next_rx_bit_count = rx_bit_count + 1'b1;
+            next_rx_bit_idx = rx_bit_idx + 1'b1;
     end
     
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) rx_bit_count <= '0;
-        else        rx_bit_count <= next_rx_bit_count;
+        if (!rst_n) rx_bit_idx <= '0;
+        else        rx_bit_idx <= next_rx_bit_idx;
     end
 
     //--------------------------------------------------------------------------
     // Frame Data
     //--------------------------------------------------------------------------
 
-    assign next_rx_shift_register = ((rx_state == RX_DATA || rx_state == RX_START) && rx_mid_bit)   ?
-                                    {rx_sample, rx_shift_register[7:1]}     :
+    assign next_rx_shift_register = ((rx_state == RX_DATA || rx_state == RX_START) && rx_mid_bit) ?
+                                    {rx_sample, rx_shift_register[7:1]} :
                                     rx_shift_register;
 
+    assign next_start_bit   = ((rx_state == RX_START || rx_state == RX_FRAME_END) && rx_mid_bit) ? rx_sample : start_bit;
     assign next_stop_bit    = ((rx_state == RX_STOP) && rx_mid_bit)     ? rx_sample : stop_bit;
     assign next_parity_bit  = ((rx_state == RX_PARITY) && rx_mid_bit)   ? rx_sample : parity_bit;
     
@@ -192,34 +187,56 @@ module uart_rx #(
             rx_shift_register   <= '0;
             stop_bit            <= '0;
             parity_bit          <= '0;
+            start_bit           <= '0;
         end else begin
             rx_shift_register   <= next_rx_shift_register;
             stop_bit            <= next_stop_bit;
             parity_bit          <= next_parity_bit;
+            start_bit           <= next_start_bit;
         end
+    end
+
+    always_comb begin
+        unique case (rx_config.char_length)
+            LENGTH_5: formatted_data = {3'b0, rx_shift_register[7:3]};
+            LENGTH_6: formatted_data = {2'b0, rx_shift_register[7:2]};
+            LENGTH_7: formatted_data = {1'b0, rx_shift_register[7:1]};
+            LENGTH_8: formatted_data = rx_shift_register;
+            default:  formatted_data = '0;
+        endcase
     end
 
     //--------------------------------------------------------------------------
     // Error Checking and FIFO Data
     //--------------------------------------------------------------------------
 
-    assign rx_fifo_wr_en       = rx_frame_done;
+    assign rx_frame_done        = (rx_state == RX_FRAME_END && tick_1x_rx);
+    assign rx_fifo_wr_en        = rx_frame_done;
 
-    assign rx_data_out         = rx_fifo_entry_out.data;
-    assign rx_parity_error     = rx_fifo_entry_out.parity_error;
-    assign rx_framing_error    = rx_fifo_entry_out.framing_error;
-    assign rx_break_interrupt  = rx_fifo_entry_out.break_interrupt;
-    assign rx_overrun_error    = 1'b0; // TODO: Calculate this
+    assign rx_data_out          = rx_fifo_entry_out.data;
+    assign rx_parity_error      = rx_fifo_entry_out.parity_error;
+    assign rx_framing_error     = rx_fifo_entry_out.framing_error;
+    assign rx_break_interrupt   = rx_fifo_entry_out.break_interrupt;
+    assign rx_overrun_error     = rx_frame_done && rx_fifo_full && !rx_fifo_rd_en;
+
+    assign rx_fifo_entry_in.data            = formatted_data;
+    assign rx_fifo_entry_in.parity_error    = parity_error;
+    assign rx_fifo_entry_in.framing_error   = !stop_bit;
+    assign rx_fifo_entry_in.break_interrupt = break_cond;
 
     always_comb begin
-        rx_fifo_entry_in = '0;
+        parity_error        = 1'b0;
+        calculated_parity   = ^{formatted_data, parity_bit};
 
-        // Data
-        rx_fifo_entry_in.data = rx_shift_register;
-        // Parity Error: TODO: Check the parity configuration, calculate parity
-        // Framing Error
-        rx_fifo_entry_in.framing_error = (stop_bit) ? 1'b0 : 1'b1;
-        // Break Interrupt: TODO: Check for a full frame of zeros, including parity
+        if (rx_config.parity_en) begin
+            unique case (rx_config.parity_type)
+                PARITY_ODD:     parity_error = (calculated_parity != 1'b1);
+                PARITY_EVEN:    parity_error = (calculated_parity != 1'b0);
+                PARITY_STICK_1: parity_error = (parity_bit != 1'b1);
+                PARITY_STICK_0: parity_error = (parity_bit != 1'b0);
+                default:        parity_error = (1'b0);
+            endcase
+        end
     end
 
     //--------------------------------------------------------------------------
