@@ -52,18 +52,4 @@ module uart (
         else        div_cnt <= next_div_cnt;
     end
 
-//------------------------------------------------------------------------------
-// Transmitter
-//------------------------------------------------------------------------------
-    logic [3:0] bit_div_cnt_tx, next_bit_div_cnt_tx;
-    logic       tick_1x_tx;
-
-    assign next_bit_div_cnt_tx  = (bit_div_cnt_tx == 4'd15) ? '0 : bit_div_cnt_tx + 1'b1;
-    assign tick_1x_tx           = (next_bit_div_cnt_tx == '0);
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) bit_div_cnt_tx <= '0;
-        else        bit_div_cnt_tx <= next_bit_div_cnt_tx;
-    end
-
 endmodule
