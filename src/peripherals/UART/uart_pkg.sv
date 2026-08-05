@@ -53,4 +53,60 @@ package uart_pkg;
         logic           break_control;
         uart_config_t   uart_config;
     } line_control_t;
+
+    typedef struct packed {
+        logic   rx_error;
+        logic   tx_empty;
+        logic   tx_holding_empty;
+        logic   break_interrupt;
+        logic   framing_error;
+        logic   parity_error;
+        logic   overrun_error;
+        logic   data_ready;
+    } line_status_t;
+
+    typedef struct packed {
+        logic [2:0] reserved;
+        logic       loop;
+        logic       out2;
+        logic       out1;
+        logic       rts;
+        logic       data_terminal_ready;
+    } modem_control_t;
+
+    typedef struct packed {
+        logic data_carrier_detected;
+        logic ring_indicator;
+        logic data_set_ready;
+        logic cts;
+        logic delta_data_carrier_detected;
+        logic trailing_edge_ring_indicator;
+        logic delta_data_set_ready;
+        logic delta_cts;
+    } modem_status_t;
+
+    typedef struct packed {
+        logic [3:0] reserved;
+        logic       modem_status_ie;
+        logic       rx_line_status_ie;
+        logic       tx_holding_empty_ie;
+        logic       rx_data_available_ie;
+    } interrupt_enable_t;
+
+    typedef struct packed {
+        logic [1:0] fifos_enabled;
+        logic [1:0] reserved;
+        logic [2:0] interrupt_id;
+        logic       interrupt_pending;
+    } interrupt_ident_t;
+
+    typedef struct packed {
+        logic [1:0] rx_trigger;
+        logic [1:0] reseverd;
+        logic       dma_mode_select;
+        logic       xmit_fifo_reset;
+        logic       rx_fifo_reset;
+        logic       fifo_enable;
+    } fifo_control_t;
+
 endpackage
