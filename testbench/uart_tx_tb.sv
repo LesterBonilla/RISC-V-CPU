@@ -2,12 +2,16 @@ import uart_pkg::*;
 
 module uart_tx_tb;
 
+    localparam DIVISOR = 1;
+    localparam int unsigned FIFO_DEPTH = 16;
+
 //------------------------------------------------------------------------------
 // Clock, Reset, Baud
 //------------------------------------------------------------------------------
     logic clk = 0;
     logic rst_n = 0;
     logic baud_16x_ce;
+    logic [$clog2(DIVISOR)-1:0] div_cnt, next_div_cnt;
 
     always #5 clk = ~clk;
 
@@ -18,17 +22,20 @@ module uart_tx_tb;
         @(posedge clk);
     endtask
 
-    initial begin
-        baud_16x_ce = 0;
-    end
+    assign baud_16x_ce  = (div_cnt == DIVISOR-1);
+    assign next_div_cnt = baud_16x_ce ? '0 : div_cnt + 1; 
 
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) div_cnt <= '0;
+        else        div_cnt <= next_div_cnt;
+    end
 //------------------------------------------------------------------------------
 // DUT
 //------------------------------------------------------------------------------
-    localparam int unsigned FIFO_DEPTH = 16;
 
     logic [7:0] tx_data_in;
     logic       tx_fifo_wr_en, tx_fifo_flush, tx_pin, tx_fifo_empty, tx_fifo_full;
+    uart_config_t tx_config;
 
     logic [$clog2(FIFO_DEPTH):0] tx_fifo_count;
 
@@ -49,17 +56,21 @@ module uart_tx_tb;
 //------------------------------------------------------------------------------
 // DUT Operation and Expected Behavior
 //------------------------------------------------------------------------------
+    int unsigned baud_cnt = 0;
 
-    task automatic wait_baud();
-        for (int i = 0; i < 16; i++) begin
+    task automatic wait_baud_period();
+        for (int i = 0; i < (16 * DIVISOR); i++) begin
             baud_cnt = i;
             @(posedge clk);
         end
     endtask
 
-    task automatic sample_transmission();
-
-    endtask
+//------------------------------------------------------------------------------
+// Start tests
+//------------------------------------------------------------------------------
+    initial begin
+        reset_dut();
+    end
 
 
 endmodule
