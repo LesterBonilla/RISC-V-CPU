@@ -1,4 +1,9 @@
-module uart (
+import uart_pkg::*;
+
+module uart # (
+    parameter int unsigned RX_FIFO_DEPTH = 16,
+    parameter int unsigned TX_FIFO_DEPTH = 16
+)(
     input logic         clk,
     input logic         rst_n,
 
@@ -27,6 +32,8 @@ module uart (
     localparam SCRATCH              = 3'b111;
     localparam DIVISOR_LATCH_LOW    = 3'b000; // DLAB = 1
     localparam DIVISOR_LATCH_HIGH   = 3'b001; // DLAB = 1
+    localparam FIFO_CTRL_TX_CLR_POS = 2;
+    localparam FIFO_CTRL_RX_CLR_POS = 1;
 
 //------------------------------------------------------------------------------
 // Signals
@@ -39,18 +46,33 @@ module uart (
     fifo_control_t      fifo_control;
     logic [7:0]         rx_buffer, tx_holding, scratch;
     logic [15:0]        divisor;
-    logic               div_latch_en;
+    logic               div_latch_en, fifo_control_write;
+
+    // Rx
+    logic  rx_fifo_rd_en, rx_fifo_flush, rx_fifo_empty, rx_fifo_full, rx_parity_error;
+    logic  rx_framing_error, rx_break_interrupt, rx_overrun_error, rx_error_in_fifo;
+    logic [7:0] rx_data_out;
+    logic [RX_FIFO_DEPTH:0] rx_fifo_count, rx_fifo_trigger;
+
+    // Tx
+    logic tx_fifo_wr_en, tx_fifo_flush, tx_fifo_empty, tx_fifo_full, tx_pin_tx;
+    logic tx_empty;
+    logic [7:0] tx_data_in;
+    logic [TX_FIFO_DEPTH:0] tx_fifo_count;
 
 //------------------------------------------------------------------------------
 // Read/Write
 //------------------------------------------------------------------------------
+    assign rx_buffer            = rx_data_out;
+    assign fifo_control_write   = (write_en && (address == FIFO_CONTROL)); 
+    
     always_comb begin
         unique case (address)
             RX_BUFF_DIV_LOW:    if (div_latch_en)   data_out = divisor[7:0];
                                 else                data_out = rx_buffer;
             INT_EN_DIV_HIGH:    if (div_latch_en)   data_out = divisor[15:8];
                                 else                data_out = interrupt_enable;
-            INTERRUPT_IDENT:                        data_out = interrupt_ident & 8'hCF;
+            INTERRUPT_IDENT:                        data_out = interrupt_ident & 8'hCF; // Always FIFO mode
             LINE_CONTROL:                           data_out = line_control;
             LINE_STATUS:                            data_out = line_status;
             SCRATCH:                                data_out = scratch;
@@ -68,12 +90,12 @@ module uart (
         end else if (write_en) begin
             unique0 case (address)
                 RX_BUFF_DIV_LOW:    if (div_latch_en)   divisor[7:0]        <= data_in;
-                FIFO_CONTROL:                           fifo_control        <= data_in;
+                FIFO_CONTROL:                           fifo_control        <= data_in & 8'hC9; // Tx/Rx flushes are not stored
                 INT_EN_DIV_HIGH:    if (div_latch_en)   divisor[15:8]       <= data_in;                    
                                     else                interrupt_enable    <= data_in & 8'h0F;
                 LINE_CONTROL:                           line_control        <= data_in; 
                 LINE_STATUS:                            line_status         <= data_in;
-                SCRATCH:                                scartch             <= data_in;
+                SCRATCH:                                scratch             <= data_in;
             endcase
         end
     end
@@ -93,8 +115,8 @@ module uart (
     logic [15:0]    div_cnt, next_div_cnt;
     logic           baud_16x_ce;
     
-    assign next_div_cnt = (div_cnt == divisor - 1'b1) ? '0 : div_cnt + 1'b1;
-    assign baud_16x_ce  = (next_div_cnt == '0);
+    assign next_div_cnt = baud_16x_ce ? '0 : div_cnt + 1'b1;
+    assign baud_16x_ce  = (div_cnt == (divisor - 1'b1));
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) div_cnt <= '0;
@@ -102,12 +124,81 @@ module uart (
     end
 
 //------------------------------------------------------------------------------
+// Interrupts
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
 // Receiver
 //------------------------------------------------------------------------------
+    assign line_status_read             = (read_en && (address == LINE_STATUS));
+    assign line_status.data_ready       = !rx_fifo_empty;
+    assign line_status.parity_error     = rx_parity_error;
+    assign line_status.framing_error    = rx_framing_error;
+    assign line_status.break_interrupt  = rx_break_interrupt;
+    assign line_status.rx_error         = rx_error_in_fifo;
+    assign rx_fifo_flush                = (fifo_control_write && data_in[FIFO_CTRL_RX_CLR_POS]);
+
+    always_comb begin
+        rx_fifo_trigger = $clog2(RX_FIFO_DEPTH)'(1);
+        unique case (fifo_control.rx_trigger)
+            TRIGGER_01: rx_fifo_trigger = $clog2(RX_FIFO_DEPTH)'(1);
+            TRIGGER_04: rx_fifo_trigger = $clog2(RX_FIFO_DEPTH)'(4);
+            TRIGGER_08: rx_fifo_trigger = $clog2(RX_FIFO_DEPTH)'(8);
+            TRIGGER_14: rx_fifo_trigger = $clog2(RX_FIFO_DEPTH)'(14);
+        endcase
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            line_status.overrun_error <= 1'b0;
+        end else if (rx_overrun_error) begin 
+            line_status.overrun_error <= 1'b1;
+        end else if (line_status_read) begin
+            line_status.overrun_error <= 1'b0;
+        end
+    end
+
+    uart_rx #(.FIFO_DEPTH(RX_FIFO_DEPTH)) uart_rx_inst (
+        .clk                    (clk),
+        .rst_n                  (rst_n),
+        .tick_16x               (baud_16x_ce),
+        .rx_pin                 (rx_pin),
+        .rx_fifo_rd_en          (rx_fifo_rd_en),
+        .rx_fifo_flush          (rx_fifo_flush),
+        .rx_config              (line_control.uart_config),
+        .rx_fifo_empty          (rx_fifo_empty),
+        .rx_fifo_full           (rx_fifo_full),
+        .rx_parity_error        (rx_parity_error),
+        .rx_framing_error       (rx_framing_error),
+        .rx_break_interrupt     (rx_break_interrupt),
+        .rx_overrun_error       (rx_overrun_error),
+        .rx_data_out            (rx_data_out),
+        .rx_fifo_count          (rx_fifo_count),
+        .rx_error_in_fifo       (rx_error_in_fifo)
+    );
 
 //------------------------------------------------------------------------------
 // Transmitter
 //------------------------------------------------------------------------------
-  
+    assign tx_pin = (line_control.break_control) ? 1'b0 : tx_pin_tx;
+    assign line_status.tx_holding_empty = tx_fifo_empty;
+    assign line_status.tx_empty         = tx_empty;
+    assign tx_fifo_flush                = (fifo_control_write && data_in[FIFO_CTRL_TX_CLR_POS]);
+    
+    uart_tx #(.FIFO_DEPTH(TX_FIFO_DEPTH)) uart_tx_inst (
+        .clk                    (clk),
+        .rst_n                  (rst_n),
+        .baud_16x_ce            (baud_16x_ce),
+        .tx_fifo_wr_en          (tx_fifo_wr_en),
+        .tx_fifo_flush          (tx_fifo_flush),
+        .tx_data_in             (tx_data_in),
+        .tx_config              (line_control.uart_config),
+        .tx_pin                 (tx_pin_tx),
+        .tx_fifo_empty          (tx_fifo_empty),
+        .tx_fifo_full           (tx_fifo_full),
+        .tx_fifo_count          (tx_fifo_count),
+        .tx_empty               (tx_empty)
+    );
 
 endmodule
