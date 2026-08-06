@@ -48,6 +48,15 @@ package uart_pkg;
         TRIGGER_14  = 2'b11   
     } rx_fifo_trigger_e;
 
+    // Shown in order of priority
+    typedef enum logic [2:0] {
+        UART_INT_NONE       = 3'b000,
+        UART_INT_RX_STATUS  = 3'b011,
+        UART_INT_RX_DATA    = 3'b010,
+        UART_INT_RX_TIMEOUT = 3'b110,
+        UART_INT_TX_EMPTY   = 3'b001
+    } uart_intr_ident_e;
+
     typedef struct packed {
         uart_parity_e       parity_type;
         uart_parity_en_e    parity_en;

@@ -14,6 +14,7 @@ module uart # (
     input logic [2:0]   address,
 
     output logic        tx_pin,
+    output logic        interrupt,
     output logic [7:0]  data_out
 );
 
@@ -60,6 +61,9 @@ module uart # (
     logic [7:0] tx_data_in;
     logic [TX_FIFO_DEPTH:0] tx_fifo_count;
 
+    // Interrupts
+    logic rx_line_status_intr, rx_data_available_intr, tx_holding_empty_intr;
+
 //------------------------------------------------------------------------------
 // Read/Write
 //------------------------------------------------------------------------------
@@ -85,7 +89,6 @@ module uart # (
             interrupt_enable    <= 8'd0;
             fifo_control        <= 8'd1; // Always enable fifo mode
             line_control        <= 8'd3; // Default: 8 data, 1 stop, no parity
-            line_status         <= 8'd0;
             divisor             <= '0;
         end else if (write_en) begin
             unique0 case (address)
@@ -94,7 +97,6 @@ module uart # (
                 INT_EN_DIV_HIGH:    if (div_latch_en)   divisor[15:8]       <= data_in;                    
                                     else                interrupt_enable    <= data_in & 8'h0F;
                 LINE_CONTROL:                           line_control        <= data_in; 
-                LINE_STATUS:                            line_status         <= data_in;
                 SCRATCH:                                scratch             <= data_in;
             endcase
         end
@@ -126,7 +128,54 @@ module uart # (
 //------------------------------------------------------------------------------
 // Interrupts
 //------------------------------------------------------------------------------
+    // Currently, only FIFO mode is supported. TODO: Add support for polled mode
+    // TODO: The datasheet says that reading the line status clears the interrupt and
+    //       the flags, but then says in FIFO mode the errors exist with their associated
+    //       character is at the top. I think this means it can be cleared just by
+    //       reading the errored character, which is my current implementation. I will
+    //       get back to this to decide if I want to clear on line_status read as well.
+    // RX Interrupts:
+    //  rx_data_available: Set when (rx_fifo_count >= rx_fifo_trigger), 
+    //                     cleared when it falls below that value.
+    //  rx_line_status:    Set when the current rx output has an error,
+    //                     cleared when the errored output is read.
+    //  rx_data_ready:     Set when rx_fifo is not empty, reset when it is empty
+    //  rx_timeout:        Set when there is rx_data in the rx_fifo that hasn't been
+    //                     read in 4 frame periods, as configured (start+data+parity+stops).
+    //                     Cleared by reading from the rx_buffer, the timer is refreshed
+    //                     every time rx_buffer is read. TODO: Implement this timer
+    // TX Interrupts:
+    //  tx_holding_empty:  Set when tx_fifo_empty, cleared by writing to it or reading
+    //                     the interrupt identity register. TODO: Currently only reset by
+    //                     the empty flag. Decide whether I want to add reading IIR to clear it.
+    //  tx_empty:          Set whenever the tx_shift_register and tx_fifo are empty.
+    //                     TODO: The datasheet explains some delay behavior for this interrupt.
+    //                     If between the last time tx_fifo_empty was true and the most recent
+    //                     time tx_fifo_empty is true, there wasn't at least 2 bytes in the tx_fifo
+    //                     at the same time, this is delayed by 1 character time - last stop bit time.
+    //                     I'm not sure that I will implement this. I will come back to it.
+    // Priority: rx_line_status, rx_data_ready, tx_holding_empty, modem_status
+    assign rx_line_status_intr      = interrupt_enable.rx_line_status_ie && (line_status | 8'h17); // Error bits
+    assign rx_data_available_intr   = interrupt_enable.rx_data_available_ie && (line_status.data_ready); // TODO: And timeout
+    assign tx_holding_empty_intr    = interrupt_enable.tx_holding_empty_ie && (line_status.tx_holding_empty);
 
+    // TODO: The interrupts must not update while a CPU access is reading the interrupt_ident register.
+    //       This can be enforced registering these bits instead of keeping them live.
+    assign interrupt = ~interrupt_ident.interrupt_pending; // Output interrupt signal is active high.
+    assign interrupt_ident.interrupt_pending = !(rx_line_status_intr || rx_data_available_intr || tx_holding_empty_intr);
+    assign interrupt_ident.reserved = '0;
+    assign interrupt_ident.fifos_enabled = 2'b11; // Always fifo mode
+
+    always_comb begin
+        if (rx_line_status_intr)
+            interrupt_ident.interrupt_id = UART_INT_RX_STATUS;
+        else if (rx_data_available_intr)
+            interrupt_ident.interrupt_id = UART_INT_RX_DATA; // TODO: Add timeout enum
+        else if (tx_holding_empty_intr)
+            interrupt_ident.interrupt_id = UART_INT_TX_EMPTY;
+        else
+            interrupt_ident.interrupt_id = UART_INT_NONE;
+    end
 
 //------------------------------------------------------------------------------
 // Receiver
