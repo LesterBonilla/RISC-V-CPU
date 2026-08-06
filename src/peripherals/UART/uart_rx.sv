@@ -20,6 +20,7 @@ module uart_rx #(
     output logic        rx_framing_error,
     output logic        rx_break_interrupt,
     output logic        rx_overrun_error,
+    output logic        rx_error_in_fifo,
     output logic [7:0]  rx_data_out,
 
     output logic [$clog2(FIFO_DEPTH):0] rx_fifo_count
@@ -68,6 +69,8 @@ module uart_rx #(
     // Frame data
     logic [7:0]     rx_shift_register, next_rx_shift_register, formatted_data;
     logic           parity_bit, next_parity_bit, calculated_parity, break_int, parity_error;
+    logic           rx_error_in_fifo_entry_in, rx_error_in_fifo_entry_out;
+    logic [$clog2(FIFO_DEPTH):0] rx_fifo_error_count;
 
     // FIFO signals
     rx_fifo_entry_t rx_fifo_entry_in, rx_fifo_entry_out;
@@ -218,12 +221,16 @@ module uart_rx #(
     assign rx_parity_error      = rx_fifo_entry_out.parity_error;
     assign rx_framing_error     = rx_fifo_entry_out.framing_error;
     assign rx_break_interrupt   = rx_fifo_entry_out.break_interrupt;
-    assign rx_overrun_error     = rx_frame_done && rx_fifo_full && !rx_fifo_rd_en;
+    assign rx_overrun_error     = (rx_frame_done && rx_fifo_full && !rx_fifo_rd_en);
+    assign rx_error_in_fifo     = (rx_fifo_error_count != '0);
 
     assign rx_fifo_entry_in.data            = formatted_data;
     assign rx_fifo_entry_in.parity_error    = parity_error;
     assign rx_fifo_entry_in.framing_error   = !stop_bit;
     assign rx_fifo_entry_in.break_interrupt = break_cond;
+    assign rx_error_in_fifo_entry_in        = (rx_fifo_wr_en && !rx_fifo_full) && (parity_error || !stop_bit || break_cond);
+    assign rx_error_in_fifo_entry_out       = (rx_fifo_rd_en && !rx_fifo_empty) && 
+                                              (rx_fifo_entry_out.parity_error || rx_fifo_entry_out.framing_error ||rx_fifo_entry_out.break_interrupt);
 
     always_comb begin
         parity_error        = 1'b0;
@@ -238,6 +245,17 @@ module uart_rx #(
                 default:        parity_error = (1'b0);
             endcase
         end
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            rx_fifo_error_count <= '0;
+        else if (rx_fifo_flush) 
+            rx_fifo_error_count <= '0;
+        else 
+            rx_fifo_error_count <= rx_fifo_error_count 
+                                   + rx_error_in_fifo_entry_in
+                                   - rx_error_in_fifo_entry_out;    
     end
 
     //--------------------------------------------------------------------------
