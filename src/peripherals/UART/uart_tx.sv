@@ -16,6 +16,7 @@ module uart_tx #(
     output logic        tx_pin,
     output logic        tx_fifo_empty,
     output logic        tx_fifo_full,
+    output logic        tx_empty,
 
     output logic [$clog2(FIFO_DEPTH):0] tx_fifo_count
 );
@@ -77,8 +78,10 @@ module uart_tx #(
     // data_available:  There is data in the FIFO to be sent
     // data_done:       Character_Length bits have been sent
     // two_stops:       True if tx_config.stop_bit is true and first bit is being sent
+    // tx_exmpty:       True if FIFO is empty and shift register is empty
 
-    assign data_available = !tx_fifo_empty;
+    assign data_available   = !tx_fifo_empty;
+    assign tx_empty         = (tx_fifo_empty && (tx_state == UART_IDLE));
 
     always_comb begin
         next_tx_state = tx_state;
