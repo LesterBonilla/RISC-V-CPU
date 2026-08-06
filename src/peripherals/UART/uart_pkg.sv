@@ -41,6 +41,13 @@ package uart_pkg;
         PARITY_STICK_0  = 2'b11
     } uart_parity_e;
 
+    typedef enum logic [1:0] { 
+        TRIGGER_01  = 2'b00,
+        TRIGGER_04  = 2'b01,
+        TRIGGER_08  = 2'b10,
+        TRIGGER_14  = 2'b11   
+    } rx_fifo_trigger_e;
+
     typedef struct packed {
         uart_parity_e       parity_type;
         uart_parity_en_e    parity_en;
@@ -101,12 +108,12 @@ package uart_pkg;
     } interrupt_ident_t;
 
     typedef struct packed {
-        logic [1:0] rx_trigger;
-        logic [1:0] reseverd;
-        logic       dma_mode_select;
-        logic       xmit_fifo_reset;
-        logic       rx_fifo_reset;
-        logic       fifo_enable;
+        rx_fifo_trigger_e   rx_trigger;
+        logic [1:0]         reseverd;
+        logic               dma_mode_select;
+        logic               tx_fifo_reset; // Not stored, used directly as strobe
+        logic               rx_fifo_reset; // Not stored, used directly as strobe
+        logic               fifo_enable;
     } fifo_control_t;
 
 endpackage
