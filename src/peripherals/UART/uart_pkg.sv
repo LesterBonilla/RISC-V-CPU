@@ -1,5 +1,31 @@
 package uart_pkg;
 
+//------------------------------------------------------------------------------
+// Address Map
+//------------------------------------------------------------------------------
+    localparam RX_BUFF_DIV_LOW      = 3'b000; // Read only, DLAB = 0
+    localparam TX_HOLDING           = 3'b000; // Write only, DLAB = 0
+    localparam INT_EN_DIV_HIGH      = 3'b001; // DLAB = 0
+    localparam INTERRUPT_IDENT      = 3'b010; // Read only
+    localparam FIFO_CONTROL         = 3'b010; // Write only
+    localparam LINE_CONTROL         = 3'b011;
+    localparam MODEM_CONTROL        = 3'b100; // Not implemented
+    localparam LINE_STATUS          = 3'b101;
+    localparam MODEM_STATUS         = 3'b110; // Not implemented
+    localparam SCRATCH              = 3'b111;
+    localparam DIVISOR_LATCH_LOW    = 3'b000; // DLAB = 1
+    localparam DIVISOR_LATCH_HIGH   = 3'b001; // DLAB = 1
+    localparam FIFO_CTRL_TX_CLR_POS = 2;
+    localparam FIFO_CTRL_RX_CLR_POS = 1;
+
+    localparam logic STOP_BIT_VALUE     = 1'b1;
+    localparam logic IDLE_BIT_VALUE     = 1'b1;
+    localparam logic START_BIT_VALUE    = 1'b0;
+
+//------------------------------------------------------------------------------
+// Types
+//------------------------------------------------------------------------------
+ 
     typedef enum logic [2:0] { 
         UART_IDLE,
         UART_START,

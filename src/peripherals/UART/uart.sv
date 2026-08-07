@@ -19,24 +19,6 @@ module uart # (
 );
 
 //------------------------------------------------------------------------------
-// Address Map
-//------------------------------------------------------------------------------
-    localparam RX_BUFF_DIV_LOW      = 3'b000; // Read only, DLAB = 0
-    localparam TX_HOLDING           = 3'b000; // Write only, DLAB = 0
-    localparam INT_EN_DIV_HIGH      = 3'b001; // DLAB = 0
-    localparam INTERRUPT_IDENT      = 3'b010; // Read only
-    localparam FIFO_CONTROL         = 3'b010; // Write only
-    localparam LINE_CONTROL         = 3'b011;
-    localparam MODEM_CONTROL        = 3'b100; // Not implemented
-    localparam LINE_STATUS          = 3'b101;
-    localparam MODEM_STATUS         = 3'b110; // Not implemented
-    localparam SCRATCH              = 3'b111;
-    localparam DIVISOR_LATCH_LOW    = 3'b000; // DLAB = 1
-    localparam DIVISOR_LATCH_HIGH   = 3'b001; // DLAB = 1
-    localparam FIFO_CTRL_TX_CLR_POS = 2;
-    localparam FIFO_CTRL_RX_CLR_POS = 1;
-
-//------------------------------------------------------------------------------
 // Signals
 //------------------------------------------------------------------------------
     // Registers
@@ -45,7 +27,7 @@ module uart # (
     interrupt_enable_t  interrupt_enable;
     interrupt_ident_t   interrupt_ident;
     fifo_control_t      fifo_control;
-    logic [7:0]         rx_buffer, tx_holding, scratch;
+    logic [7:0]         rx_buffer, scratch;
     logic [15:0]        divisor;
     logic               div_latch_en, fifo_control_write;
 
@@ -53,13 +35,13 @@ module uart # (
     logic  rx_fifo_rd_en, rx_fifo_flush, rx_fifo_empty, rx_fifo_full, rx_parity_error;
     logic  rx_framing_error, rx_break_interrupt, rx_overrun_error, rx_error_in_fifo;
     logic [7:0] rx_data_out;
-    logic [RX_FIFO_DEPTH:0] rx_fifo_count, rx_fifo_trigger;
+    logic [$clog2(RX_FIFO_DEPTH):0] rx_fifo_count, rx_fifo_trigger;
 
     // Tx
     logic tx_fifo_wr_en, tx_fifo_flush, tx_fifo_empty, tx_fifo_full, tx_pin_tx;
     logic tx_empty;
     logic [7:0] tx_data_in;
-    logic [TX_FIFO_DEPTH:0] tx_fifo_count;
+    logic [$clog2(TX_FIFO_DEPTH):0] tx_fifo_count;
 
     // Interrupts
     logic rx_line_status_intr, rx_data_available_intr, tx_holding_empty_intr;
@@ -69,7 +51,8 @@ module uart # (
 //------------------------------------------------------------------------------
     assign rx_buffer            = rx_data_out;
     assign fifo_control_write   = (write_en && (address == FIFO_CONTROL)); 
-    
+    assign div_latch_en         = line_control.divisor_latch;
+
     always_comb begin
         unique case (address)
             RX_BUFF_DIV_LOW:    if (div_latch_en)   data_out = divisor[7:0];
@@ -89,7 +72,8 @@ module uart # (
             interrupt_enable    <= 8'd0;
             fifo_control        <= 8'd1; // Always enable fifo mode
             line_control        <= 8'd3; // Default: 8 data, 1 stop, no parity
-            divisor             <= '0;
+            divisor             <= 16'd1;// Avoid zero divisor
+            scratch             <= 8'd0;
         end else if (write_en) begin
             unique0 case (address)
                 RX_BUFF_DIV_LOW:    if (div_latch_en)   divisor[7:0]        <= data_in;
@@ -161,7 +145,7 @@ module uart # (
 
     // TODO: The interrupts must not update while a CPU access is reading the interrupt_ident register.
     //       This can be enforced registering these bits instead of keeping them live.
-    assign interrupt = ~interrupt_ident.interrupt_pending; // Output interrupt signal is active high.
+    assign interrupt = !interrupt_ident.interrupt_pending; // Output interrupt signal is active high.
     assign interrupt_ident.interrupt_pending = !(rx_line_status_intr || rx_data_available_intr || tx_holding_empty_intr);
     assign interrupt_ident.reserved = '0;
     assign interrupt_ident.fifos_enabled = 2'b11; // Always fifo mode
@@ -187,6 +171,7 @@ module uart # (
     assign line_status.break_interrupt  = rx_break_interrupt;
     assign line_status.rx_error         = rx_error_in_fifo;
     assign rx_fifo_flush                = (fifo_control_write && data_in[FIFO_CTRL_RX_CLR_POS]);
+    assign rx_fifo_rd_en                = (address == RX_BUFF_DIV_LOW) && !div_latch_en && read_en;
 
     always_comb begin
         rx_fifo_trigger = $clog2(RX_FIFO_DEPTH)'(1);
@@ -234,7 +219,9 @@ module uart # (
     assign line_status.tx_holding_empty = tx_fifo_empty;
     assign line_status.tx_empty         = tx_empty;
     assign tx_fifo_flush                = (fifo_control_write && data_in[FIFO_CTRL_TX_CLR_POS]);
-    
+    assign tx_data_in                   = data_in;
+    assign tx_fifo_wr_en                = ((address == TX_HOLDING) && !div_latch_en && write_en);
+
     uart_tx #(.FIFO_DEPTH(TX_FIFO_DEPTH)) uart_tx_inst (
         .clk                    (clk),
         .rst_n                  (rst_n),

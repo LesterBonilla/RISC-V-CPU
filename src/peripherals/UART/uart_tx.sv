@@ -62,7 +62,7 @@ module uart_tx #(
     // baud_16x_ce: Enabled every divisor clks to implement 16 x baud_rate
     // baud_ce:     Enabled every 16 baud_16x_ce to implement baud_rate
 
-    assign baud_ce              = (over_sample_cnt == 4'd15);
+    assign baud_ce              = (over_sample_cnt == 4'd15 && baud_16x_ce);
     assign next_oversample_cnt  = (baud_16x_ce) ? 
                                   (baud_ce)     ? '0 : over_sample_cnt + 4'd1 :
                                   (over_sample_cnt);
@@ -198,10 +198,6 @@ module uart_tx #(
     //--------------------------------------------------------------------------
     // Transmission
     //--------------------------------------------------------------------------
-    localparam logic STOP_BIT_VALUE     = 1'b1;
-    localparam logic IDLE_BIT_VALUE     = 1'b1;
-    localparam logic START_BIT_VALUE    = 1'b0;
-
     always_comb begin
         unique case (tx_state)
             UART_IDLE:      tx_pin_c = IDLE_BIT_VALUE;
