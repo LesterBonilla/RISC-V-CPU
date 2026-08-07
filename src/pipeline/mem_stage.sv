@@ -8,6 +8,7 @@ module mem_stage (
     input logic         redirect_wb,
 
     output logic        mem_write,
+    output logic        mem_read,
     output logic [3:0]  byte_en,
     output logic [31:0] write_data,
     output logic [31:0] mem_address,
@@ -18,13 +19,15 @@ module mem_stage (
 
     opcode_e opcode_mem;
     
-    logic       exception;
+    logic       exception, read_en;
     mcause_e    mcause;
     
     assign opcode_mem   = ex_mem.opcode;
     assign mem_write    = ex_mem.mem_write && ex_mem.valid && !ex_mem.exception && !redirect_wb && !exception;
     assign alu_result   = ex_mem.alu_result;
     assign mem_address  = ex_mem.alu_result;
+    assign read_en      = (ex_mem.wb_src == WB_SRC_MEM) && (ex_mem.reg_write);
+    assign mem_read     = read_en && ex_mem.valid && !ex_mem.exception && !redirect_wb && !exception;
 
     logic [15:0] selected_half;
     logic [7:0]  selected_byte;   
@@ -116,7 +119,7 @@ module mem_stage (
                     default: ;
                 endcase
 
-            end else if (opcode_mem == OP_LOAD) begin // TODO: Use a mem_read signal instead. The opcode is just for waveform debugging.
+            end else if (read_en) begin
                 unique case (ex_mem.load_op)
                     LOAD_HALF, LOAD_HALF_UNSIGNED: begin
                         if (mem_address[0]) begin

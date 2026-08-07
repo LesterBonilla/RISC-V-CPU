@@ -28,7 +28,7 @@ module core # (
     // Data memory
     logic [31:0]    mem_write_data, dmem_addr, mem_read_data;
     logic [3:0]     byte_en;
-    logic           mem_write;
+    logic           mem_write, mem_read;
 
     // Hazard control
     logic [31:0]    fwd_data_mem, wb_result;
@@ -195,6 +195,7 @@ module core # (
         .redirect_wb    (redirect_wb),
 
         .mem_write      (mem_write),
+        .mem_read       (mem_read),
         .byte_en        (byte_en),
         .write_data     (mem_write_data),
         .mem_address    (dmem_addr),
