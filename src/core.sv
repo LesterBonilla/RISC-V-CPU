@@ -6,7 +6,10 @@ module core # (
     parameter int MEM_SIZE_WORDS = 1024
 )(
     input logic clk,
-    input logic rst_n
+    input logic rst_n,
+    input logic rx_pin,
+
+    output logic tx_pin
 );
 
     // Pipeline structs
@@ -76,7 +79,10 @@ module core # (
         .byte_en        (byte_en),
         .write_en       (mem_write),
         .data_out       (mem_read_data),
-        .irq_p          (irq_p)
+        .irq_p          (irq_p),
+        .read_en        (mem_read),
+        .rx_pin         (rx_pin),
+        .tx_pin         (tx_pin)
     );
 
     register_file regfile_inst (

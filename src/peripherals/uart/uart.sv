@@ -11,11 +11,11 @@ module uart # (
     input logic         read_en,
     input logic         write_en,
     input logic [7:0]   data_in,
-    input logic [2:0]   address,
+    input logic [31:0]  address,
 
     output logic        tx_pin,
     output logic        interrupt,
-    output logic [7:0]  data_out
+    output logic [31:0] data_out
 );
 
 //------------------------------------------------------------------------------
@@ -54,16 +54,17 @@ module uart # (
     assign div_latch_en         = line_control.divisor_latch;
 
     always_comb begin
+        data_out = '0;
         unique case (address)
-            RX_BUFF_DIV_LOW:    if (div_latch_en)   data_out = divisor[7:0];
-                                else                data_out = rx_buffer;
-            INT_EN_DIV_HIGH:    if (div_latch_en)   data_out = divisor[15:8];
-                                else                data_out = interrupt_enable;
-            INTERRUPT_IDENT:                        data_out = interrupt_ident & 8'hCF; // Always FIFO mode
-            LINE_CONTROL:                           data_out = line_control;
-            LINE_STATUS:                            data_out = line_status;
-            SCRATCH:                                data_out = scratch;
-            default:                                data_out = 8'd0;
+            RX_BUFF_DIV_LOW:    if (div_latch_en)   data_out[7:0] = divisor[7:0];
+                                else                data_out[7:0] = rx_buffer;
+            INT_EN_DIV_HIGH:    if (div_latch_en)   data_out[7:0] = divisor[15:8];
+                                else                data_out[7:0] = interrupt_enable;
+            INTERRUPT_IDENT:                        data_out[7:0] = interrupt_ident & 8'hCF; // Always FIFO mode
+            LINE_CONTROL:                           data_out[7:0] = line_control;
+            LINE_STATUS:                            data_out[7:0] = line_status;
+            SCRATCH:                                data_out[7:0] = scratch;
+            default:                                data_out[7:0] = 8'd0;
         endcase
     end
 

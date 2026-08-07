@@ -9,4 +9,7 @@ package bus_pkg;
     localparam MTIMER_END_ADDR          = 32'h0200BFFF;
 
     localparam MSIP_BASE_ADDR           = 32'h02000000;
+
+    localparam UART_BASE_ADDR           = 32'h10000000;
+    localparam UART_END_ADDR            = 32'h10000020;
 endpackage
