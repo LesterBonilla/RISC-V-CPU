@@ -76,7 +76,7 @@ module uart # (
             divisor             <= 16'd1;// Avoid zero divisor
             scratch             <= 8'd0;
         end else if (write_en) begin
-            unique0 case (address)
+            unique case (address)
                 RX_BUFF_DIV_LOW:    if (div_latch_en)   divisor[7:0]        <= data_in;
                 FIFO_CONTROL:                           fifo_control        <= data_in & 8'hC9; // Tx/Rx flushes are not stored
                 INT_EN_DIV_HIGH:    if (div_latch_en)   divisor[15:8]       <= data_in;                    
