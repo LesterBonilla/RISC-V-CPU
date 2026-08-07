@@ -295,11 +295,12 @@
         },
         "include_in_device_tree": true
       },
-      // IO Memory: Sail interrupt generator at 0xC000000, MTIMER at 0x0x02004000, MTIMERCMP at 0x0200BFF8, CLINT at 0x2000000
+      // IO Memory: Sail interrupt generator at 0x0C000000, MTIMER at 0x0x02004000, MTIMERCMP at 0x0200BFF8, CLINT at 0x02000000
+      //            UART at 0x10000000
       {
         "base": {
           "len": 64,
-          "value": "0x2000000"
+          "value": "0x02000000"
         },
         "size": {
           "len": 64,
