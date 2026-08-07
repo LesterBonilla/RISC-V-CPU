@@ -68,7 +68,7 @@ def build_arch_tests(
 
     print(f"Config:\t\t{str(config_file.relative_to(PROJECT_ROOT))}")
     print(f"Workdir:\t{str(workdir.relative_to(PROJECT_ROOT))}")
-    print(f"Debug:\t\t{"No" if debug else "Yes"}")
+    print(f"Debug:\t\t{"Yes" if debug else "No"}")
     print(f"Extensions:\t{"All" if extensions is None else ",".join(extensions)}")
     print(f"Jobs:\t\t{jobs}\n")
 
