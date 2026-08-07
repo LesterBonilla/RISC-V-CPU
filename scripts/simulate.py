@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import subprocess
 import argparse
+import sys
 from generate_sv_header import generate_header
 
 
@@ -232,7 +233,9 @@ def main():
 
     # Build the elfs from riscv-arch-tests repo. They are placed in WORKDIR
     print("=== Building RISC-V Arch Tests ===")
-    build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
+    error = build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
+    if (error):
+        sys.exit(1)
 
     # Find the requested elfs, convert them to hex. 
     print("\n=== Converting ELF -> HEX ===")
