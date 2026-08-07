@@ -3,18 +3,19 @@ package uart_pkg;
 //------------------------------------------------------------------------------
 // Address Map
 //------------------------------------------------------------------------------
-    localparam RX_BUFF_DIV_LOW      = 3'b000; // Read only, DLAB = 0
-    localparam TX_HOLDING           = 3'b000; // Write only, DLAB = 0
-    localparam INT_EN_DIV_HIGH      = 3'b001; // DLAB = 0
-    localparam INTERRUPT_IDENT      = 3'b010; // Read only
-    localparam FIFO_CONTROL         = 3'b010; // Write only
-    localparam LINE_CONTROL         = 3'b011;
-    localparam MODEM_CONTROL        = 3'b100; // Not implemented
-    localparam LINE_STATUS          = 3'b101;
-    localparam MODEM_STATUS         = 3'b110; // Not implemented
-    localparam SCRATCH              = 3'b111;
-    localparam DIVISOR_LATCH_LOW    = 3'b000; // DLAB = 1
-    localparam DIVISOR_LATCH_HIGH   = 3'b001; // DLAB = 1
+    localparam UART_BASE_ADDR       = 32'h10000000;
+    localparam RX_BUFF_DIV_LOW      = UART_BASE_ADDR + 0; // Read-only RX_BUFF when DLAB = 0, DIV_LOW when DLAB = 1
+    localparam TX_HOLDING           = UART_BASE_ADDR + 0; // Write only TX_HOLDING when DLAB = 0, DIV_LOW when DLAB = 1
+    localparam INT_EN_DIV_HIGH      = UART_BASE_ADDR + 4; // Write only INT_EN when DLAB = 0, DIV_HIGH when DLAB = 1
+    localparam INTERRUPT_IDENT      = UART_BASE_ADDR + 8; // Read only
+    localparam FIFO_CONTROL         = UART_BASE_ADDR + 8; // Write only
+    localparam LINE_CONTROL         = UART_BASE_ADDR + 12;
+    localparam MODEM_CONTROL        = UART_BASE_ADDR + 16; // Not implemented
+    localparam LINE_STATUS          = UART_BASE_ADDR + 20;
+    localparam MODEM_STATUS         = UART_BASE_ADDR + 24; // Not implemented
+    localparam SCRATCH              = UART_BASE_ADDR + 28;
+    localparam DIVISOR_LATCH_LOW    = UART_BASE_ADDR + 0;  // DLAB = 1
+    localparam DIVISOR_LATCH_HIGH   = UART_BASE_ADDR + 4;  // DLAB = 1
     localparam FIFO_CTRL_TX_CLR_POS = 2;
     localparam FIFO_CTRL_RX_CLR_POS = 1;
 
