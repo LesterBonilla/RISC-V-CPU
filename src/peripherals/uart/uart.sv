@@ -29,7 +29,7 @@ module uart # (
     fifo_control_t      fifo_control;
     logic [7:0]         rx_buffer, scratch;
     logic [15:0]        divisor;
-    logic               div_latch_en, fifo_control_write;
+    logic               div_latch_en, fifo_control_write, line_status_read;
 
     // Rx
     logic  rx_fifo_rd_en, rx_fifo_flush, rx_fifo_empty, rx_fifo_full, rx_parity_error;

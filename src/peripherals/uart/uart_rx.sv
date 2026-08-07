@@ -57,7 +57,7 @@ module uart_rx #(
     uart_state_e    rx_state, next_rx_state;
     logic [3:0]     rx_bit_idx, next_rx_bit_idx;
     logic           start_bit_edge, rx_frame_done, rx_data_done, start_bit, next_start_bit;
-    logic           stop_bit, next_stop_bit;
+    logic           stop_bit, next_stop_bit, break_cond;
 
     // Clock enables
     logic [3:0]     bit_div_cnt_rx, next_bit_div_cnt_rx;
@@ -73,6 +73,7 @@ module uart_rx #(
     logic [$clog2(FIFO_DEPTH):0] rx_fifo_error_count;
 
     // FIFO signals
+    logic rx_fifo_wr_en;
     rx_fifo_entry_t rx_fifo_entry_in, rx_fifo_entry_out;
 
     //--------------------------------------------------------------------------
