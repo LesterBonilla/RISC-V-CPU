@@ -25,7 +25,7 @@ module id_stage (
     csr_op_e        csr_op;
     priv_op_e       priv_op;
 
-    assign opcode   = (if_id.valid) ? opcode_e'(instruction[6:0]) : '0;
+    assign opcode   = (if_id.valid) ? opcode_e'(instruction[6:0]) : OP_BUBBLE;
     assign csr_op   = csr_op_e'(funct3);
     assign priv_op  = priv_op_e'(funct12);
     assign is_shift = (funct3 == 3'b001) || (funct3 == 3'b101);

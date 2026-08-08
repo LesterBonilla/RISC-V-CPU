@@ -12,7 +12,8 @@ package decode_pkg;
         OP_REG_REG  = 7'b0110011,
         OP_FENCE    = 7'b0001111,
         OP_SYSTEM   = 7'b1110011,
-        OP_EXCEPT   = 7'b1111111 // Custom for waveform debugging
+        OP_EXCEPT   = 7'b1111111, // Custom for waveform debugging
+        OP_BUBBLE   = 7'b0000000
     } opcode_e;
 
     // This matches with {funct7[5], funct3} to account for funct3 overlap between
