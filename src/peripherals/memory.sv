@@ -7,12 +7,14 @@ module memory # (
     input  logic [31:0]     data_in_b,
     input  logic [3:0]      byte_en_b,
     input  logic            write_b,
+    input  logic            read_b,
     output logic [31:0]     data_out_b,
     
     input  logic [31:0]     address_a,
     input  logic [31:0]     data_in_a,
     input  logic [3:0]      byte_en_a,
     input  logic            write_a,
+    input  logic            read_a,
     output logic [31:0]     data_out_a
 );
 
@@ -32,22 +34,24 @@ module memory # (
             if (byte_en_a[2]) memory[word_address_a][2] <= data_in_a[23:16];
             if (byte_en_a[3]) memory[word_address_a][3] <= data_in_a[31:24]; 
 
-            data_out_a <= memory[word_address_a];
+            if (read_a) data_out_a <= memory[word_address_a];
+            else        data_out_a <= data_out_a;
         end else begin
-            data_out_a <= memory[word_address_a];
+            if (read_a) data_out_a <= memory[word_address_a];
+            else        data_out_a <= data_out_a;
         end
-    end
 
-    always_ff @(posedge clk) begin
         if (write_b) begin
             if (byte_en_b[0]) memory[word_address_b][0] <= data_in_b[7:0];
             if (byte_en_b[1]) memory[word_address_b][1] <= data_in_b[15:8];
             if (byte_en_b[2]) memory[word_address_b][2] <= data_in_b[23:16];
             if (byte_en_b[3]) memory[word_address_b][3] <= data_in_b[31:24]; 
 
-            data_out_b <= memory[word_address_b];
+            if (read_b) data_out_b <= memory[word_address_b];
+            else        data_out_b <= data_out_b;
         end else begin
-            data_out_b <= memory[word_address_b];
+            if (read_b) data_out_b <= memory[word_address_b];
+            else        data_out_b <= data_out_b;
         end
     end
 

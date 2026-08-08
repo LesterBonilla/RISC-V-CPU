@@ -93,9 +93,11 @@ module bus # (
         .data_out_b     (imem_data),
         .data_in_b      (32'd0),
         .write_b        (1'b0),
-        .byte_en_b      (4'd0),
+        .read_b         (imem_read),
+        .byte_en_b      (4'b1111),
         .address_a      (address),
         .write_a        (dmem_wr),
+        .read_a         (dmem_rd),
         .byte_en_a      (byte_en),
         .data_in_a      (data_in),
         .data_out_a     (dmem_out)
