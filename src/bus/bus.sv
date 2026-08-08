@@ -89,17 +89,18 @@ module bus # (
 
     memory # (.NUM_WORDS(NUM_WORDS)) memory_inst (
         .clk            (clk),
-        .imem_address   (imem_address),
-        .imem_data      (imem_data),
-        .imem_read      (imem_read),
-        .dmem_address   (address),
-        .data_in        (data_in),
-        .write_en       (dmem_wr),
-        .read_en        (dmem_rd),
-        .byte_en        (byte_en),
-        .dmem_data      (dmem_out)
+        .address_b      (imem_address),
+        .data_out_b     (imem_data),
+        .data_in_b      (32'd0),
+        .write_b        (1'b0),
+        .byte_en_b      (4'd0),
+        .address_a      (address),
+        .write_a        (dmem_wr),
+        .byte_en_a      (byte_en),
+        .data_in_a      (data_in),
+        .data_out_a     (dmem_out)
     );
-    
+
     simple_irq_gen irq_gen_inst (
         .clk            (clk),
         .rst_n          (rst_n),
