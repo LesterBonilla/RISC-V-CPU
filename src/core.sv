@@ -74,6 +74,7 @@ module core # (
 
         .imem_address   (pc),
         .imem_data      (instruction),
+        .imem_read      (!stall_if_id && !flush_if_id),
         .address        (dmem_addr),
         .data_in        (mem_write_data),
         .byte_en        (byte_en),
@@ -162,7 +163,6 @@ module core # (
     if_stage if_inst (
         .pc             (pc),
         .pc_target_ex   (pc_target_ex),
-        .instruction    (instruction),
         .pc_src_ex      (pc_src_ex),
 
         .redirect_wb    (redirect_wb),
@@ -174,6 +174,7 @@ module core # (
 
     id_stage id_inst (
         .if_id          (if_id),
+        .instruction    (instruction),
         .rs1_data       (rs1_data),
         .rs2_data       (rs2_data),
 
@@ -196,7 +197,6 @@ module core # (
 
     mem_stage mem_inst (
         .ex_mem         (ex_mem),
-        .mem_data       (mem_read_data),
 
         .redirect_wb    (redirect_wb),
 
@@ -211,6 +211,7 @@ module core # (
 
     wb_stage wb_inst (
         .mem_wb         (mem_wb),
+        .mem_read_data  (mem_read_data),
 
         .reg_write      (reg_write),
         .rd_addr        (rd_addr),

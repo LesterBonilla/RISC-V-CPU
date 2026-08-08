@@ -4,6 +4,7 @@ import csr_pkg::*;
 
 module wb_stage (
     input mem_wb_reg_t  mem_wb,
+    input logic [31:0]  mem_read_data,
 
     output logic        reg_write,
     output logic [4:0]  rd_addr,
@@ -120,9 +121,26 @@ module wb_stage (
     end
 
 //------------------------------------------------------------------------------
+// Load adjusting
+//------------------------------------------------------------------------------
+    logic [31:0] shifted, mem_data_adjusted;
+
+    assign shifted = mem_read_data >> {mem_wb.alu_result[1:0], 3'b000};
+
+    always_comb begin : load_select
+        unique case (mem_wb.load_op)
+            LOAD_BYTE:          mem_data_adjusted = {{24{shifted[7]}}, shifted[7:0]};
+            LOAD_HALF:          mem_data_adjusted = {{16{shifted[15]}}, shifted[15:0]};
+            LOAD_WORD:          mem_data_adjusted = shifted;
+            LOAD_BYTE_UNSIGNED: mem_data_adjusted = {24'd0, shifted[7:0]};
+            LOAD_HALF_UNSIGNED: mem_data_adjusted = {16'd0, shifted[15:0]};
+            default:            mem_data_adjusted = '0;
+        endcase
+    end
+
+//------------------------------------------------------------------------------
 // Regfile and CSR Writeback
 //------------------------------------------------------------------------------
-
     assign opcode_wb        = mem_wb.opcode;
     assign reg_write        = mem_wb.valid && !mem_wb.exception && mem_wb.reg_write;
     assign rd_addr          = mem_wb.rd_addr;
@@ -138,7 +156,7 @@ module wb_stage (
 
         unique case (mem_wb.wb_src) 
             WB_SRC_ALU:         wb_result = mem_wb.alu_result;
-            WB_SRC_MEM:         wb_result = mem_wb.mem_data;
+            WB_SRC_MEM:         wb_result = mem_data_adjusted;
             WB_SRC_PC_PLUS4:    wb_result = mem_wb.pc_plus4;
             WB_SRC_CSR:         wb_result = csr_read_data;
             default: ;

@@ -98,7 +98,7 @@ uart_init:              ;\
 #define RVMODEL_CLR_SSW_INT(_R1, _R2)
 #define RVMODEL_IO_INIT(_R1, _R2, _R3)
 
-#define RVMODEL_MTIMECMP_ADDRESS   0x02004000  // Address of mtimecmp CSR
+#define RVMODEL_MTIMECMP_ADDRESS   0x02008000  // Address of mtimecmp CSR
 #define RVMODEL_MTIME_ADDRESS      0x0200BFF8  // Address of mtime CSR
 
 #endif // _RVMODEL_MACROS_H

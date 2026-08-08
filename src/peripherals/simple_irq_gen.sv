@@ -7,6 +7,7 @@ module simple_irq_gen (
     input logic [31:0]  address,
     input logic [31:0]  data_in,
     input logic         write_en,
+    input logic         read_en,
 
     output logic        irq_msip,
     output logic        irq_meip,
@@ -24,12 +25,12 @@ module simple_irq_gen (
 
     assign irq_msip = msip_r[0];
     assign irq_meip = platform[11];
-    assign data_out = (address == VERSION_ADDR) ? VERSION : 32'd0; 
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             platform    <= '0;
             msip_r      <= '0;
+            data_out    <= '0;
 
         end else if (write_en && (address == PLATFORM)) begin
             if (data_in[31])    platform <= platform | (data_in & MEI_MASK);
@@ -37,6 +38,9 @@ module simple_irq_gen (
         
         end else if (write_en && (address == MSIP_BASE_ADDR)) begin
             msip_r      <= data_in; 
+        
+        end else if (read_en) begin
+            data_out <= (address == VERSION_ADDR) ? VERSION : 32'd0; 
         end 
     end
 

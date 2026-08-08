@@ -9,6 +9,7 @@ module bus # (
 
     input  logic [31:0]     imem_address,
     output logic [31:0]     imem_data,
+    input  logic            imem_read,
 
     input  logic [31:0]     address,
     input  logic [31:0]     data_in,
@@ -23,12 +24,13 @@ module bus # (
     output mip_mie_csr_t    irq_p
 );
 
-    logic dmem_en, mtimer_en, irq_gen_en, msip_en, uart_en;
     logic dmem_wr, mtimer_wr, irq_gen_wr, uart_wr;
+    logic uart_rd, dmem_rd, mtimer_rd, irq_gen_rd;
     logic irq_msip, irq_meip, irq_mtip;
-    logic uart_rd;
 
-    logic [31:0] dmem_out, irq_gen_out, mtimer_out, uart_out; 
+    logic [31:0] dmem_out, irq_gen_out, mtimer_out, uart_out;
+
+    bus_sel_e bus_select, bus_select_r;
 
     always_comb begin
         irq_p = '0;
@@ -42,18 +44,44 @@ module bus # (
 // Address Decoding
 //------------------------------------------------------------------------------
 
-    assign dmem_en      = (address >= MAIN_MEMORY_START_ADDR && address <= MAIN_MEMORY_END_ADDR);
-    assign mtimer_en    = (address >= MTIMER_BASE_ADDR && address <= MTIMER_END_ADDR);
-    assign irq_gen_en   = (address >= IRQ_GEN_BASE_ADDR && address <= IRQ_GEN_END_ADDR);
-    assign msip_en      = (address == MSIP_BASE_ADDR);
-    assign uart_en      = (address >= UART_BASE_ADDR && address <= UART_END_ADDR);
+    assign dmem_wr      = write_en && (bus_select == SEL_DMEM);
+    assign dmem_rd      = read_en && (bus_select == SEL_DMEM);
+    assign mtimer_wr    = write_en && (bus_select == SEL_MTIMER);
+    assign mtimer_rd    = read_en && (bus_select == SEL_MTIMER);
+    assign irq_gen_wr   = write_en && (bus_select == SEL_IRQGEN);
+    assign irq_gen_rd   = read_en && (bus_select == SEL_IRQGEN);
+    assign uart_wr      = write_en && (bus_select == SEL_UART);
+    assign uart_rd      = read_en && (bus_select == SEL_UART);
 
-    assign dmem_wr      = dmem_en && write_en;
-    assign mtimer_wr    = mtimer_en && write_en;
-    assign irq_gen_wr   = (irq_gen_en || msip_en) && write_en;
-    assign uart_wr      = uart_en && write_en;
+    always_comb begin
+        unique case (1'b1)
+            region_en(DMEM_REGION, address):    bus_select = SEL_DMEM;
+            region_en(UART_REGION, address):    bus_select = SEL_UART;
+            region_en(MSIP_REGION, address):    bus_select = SEL_IRQGEN;
+            region_en(IRQGEN_REGION, address):  bus_select = SEL_IRQGEN;
+            region_en(MTIMER_REGION, address):  bus_select = SEL_MTIMER;
+            default:                            bus_select = SEL_NONE;
+        endcase
+    end
 
-    assign uart_rd      = uart_en && read_en;
+//------------------------------------------------------------------------------
+// Reading
+//------------------------------------------------------------------------------
+    always_comb begin
+        unique case (bus_select_r)
+            SEL_DMEM:   data_out = dmem_out;
+            SEL_IRQGEN: data_out = irq_gen_out;
+            SEL_MTIMER: data_out = mtimer_out;
+            SEL_UART:   data_out = uart_out;
+            SEL_NONE:   data_out = '0;
+            default:    data_out = '0;
+        endcase
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n)         bus_select_r <= SEL_NONE;
+        else if (read_en)   bus_select_r <= bus_select;
+    end
 
 //------------------------------------------------------------------------------
 // Modules
@@ -61,13 +89,13 @@ module bus # (
 
     memory # (.NUM_WORDS(NUM_WORDS)) memory_inst (
         .clk            (clk),
-
         .imem_address   (imem_address),
         .imem_data      (imem_data),
-
+        .imem_read      (imem_read),
         .dmem_address   (address),
         .data_in        (data_in),
         .write_en       (dmem_wr),
+        .read_en        (dmem_rd),
         .byte_en        (byte_en),
         .dmem_data      (dmem_out)
     );
@@ -78,6 +106,7 @@ module bus # (
         .address        (address),
         .data_in        (data_in),
         .write_en       (irq_gen_wr),
+        .read_en        (irq_gen_rd),
         .irq_msip       (irq_msip),
         .irq_meip       (irq_meip),
         .data_out       (irq_gen_out)
@@ -87,6 +116,7 @@ module bus # (
         .clk            (clk),
         .rst_n          (rst_n),
         .write_en       (mtimer_wr),
+        .read_en        (mtimer_rd),
         .address        (address),
         .data_in        (data_in),
         .data_out       (mtimer_out),
@@ -105,20 +135,5 @@ module bus # (
         .interrupt      (),
         .data_out       (uart_out)
     );
-
-//------------------------------------------------------------------------------
-// Reading
-//------------------------------------------------------------------------------
-    always_comb begin
-        data_out = '0;
-
-        unique case (1'b1)
-            dmem_en:        data_out = dmem_out;
-            irq_gen_en:     data_out = irq_gen_out;
-            mtimer_en:      data_out = mtimer_out;
-            uart_en:        data_out = uart_out;
-            default:        data_out = '0;
-        endcase
-    end
 
 endmodule

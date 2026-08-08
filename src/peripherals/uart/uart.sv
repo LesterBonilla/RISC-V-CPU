@@ -27,7 +27,7 @@ module uart # (
     interrupt_enable_t  interrupt_enable;
     interrupt_ident_t   interrupt_ident;
     fifo_control_t      fifo_control;
-    logic [7:0]         rx_buffer, scratch;
+    logic [7:0]         rx_buffer, scratch, next_data_out;
     logic [15:0]        divisor;
     logic               div_latch_en, fifo_control_write, line_status_read;
 
@@ -54,17 +54,17 @@ module uart # (
     assign div_latch_en         = line_control.divisor_latch;
 
     always_comb begin
-        data_out = '0;
+        next_data_out = '0;
         unique case (address)
-            RX_BUFF_DIV_LOW:    if (div_latch_en)   data_out[7:0] = divisor[7:0];
-                                else                data_out[7:0] = rx_buffer;
-            INT_EN_DIV_HIGH:    if (div_latch_en)   data_out[7:0] = divisor[15:8];
-                                else                data_out[7:0] = interrupt_enable;
-            INTERRUPT_IDENT:                        data_out[7:0] = interrupt_ident & 8'hCF; // Always FIFO mode
-            LINE_CONTROL:                           data_out[7:0] = line_control;
-            LINE_STATUS:                            data_out[7:0] = line_status;
-            SCRATCH:                                data_out[7:0] = scratch;
-            default:                                data_out[7:0] = 8'd0;
+            RX_BUFF_DIV_LOW:    if (div_latch_en)   next_data_out[7:0] = divisor[7:0];
+                                else                next_data_out[7:0] = rx_buffer;
+            INT_EN_DIV_HIGH:    if (div_latch_en)   next_data_out[7:0] = divisor[15:8];
+                                else                next_data_out[7:0] = interrupt_enable;
+            INTERRUPT_IDENT:                        next_data_out[7:0] = interrupt_ident & 8'hCF; // Always FIFO mode
+            LINE_CONTROL:                           next_data_out[7:0] = line_control;
+            LINE_STATUS:                            next_data_out[7:0] = line_status;
+            SCRATCH:                                next_data_out[7:0] = scratch;
+            default:                                next_data_out[7:0] = 8'd0;
         endcase
     end
 
@@ -75,6 +75,7 @@ module uart # (
             line_control        <= 8'd3; // Default: 8 data, 1 stop, no parity
             divisor             <= 16'd1;// Avoid zero divisor
             scratch             <= 8'd0;
+            data_out            <= 8'd0;
         end else if (write_en) begin
             unique case (address)
                 RX_BUFF_DIV_LOW:    if (div_latch_en)   divisor[7:0]        <= data_in;
@@ -84,6 +85,9 @@ module uart # (
                 LINE_CONTROL:                           line_control        <= data_in; 
                 SCRATCH:                                scratch             <= data_in;
             endcase
+
+        end else if (read_en) begin
+            data_out <= next_data_out;
         end
     end
 

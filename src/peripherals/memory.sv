@@ -5,6 +5,7 @@ module memory # (
 
     input  logic [31:0]     imem_address,
     output logic [31:0]     imem_data,
+    input  logic            imem_read,
     
     input  logic [31:0]     dmem_address,
     input  logic [31:0]     data_in,
@@ -31,8 +32,12 @@ module memory # (
             if (byte_en[2]) memory[dmem_word_address][2] <= data_in[23:16];
             if (byte_en[3]) memory[dmem_word_address][3] <= data_in[31:24]; 
         end
-        if (read_en) begin
+        
+        if (imem_read) begin
             imem_data <= memory[imem_word_address];
+        end
+        
+        if (read_en) begin
             dmem_data <= memory[dmem_word_address];
         end
     end
