@@ -21,7 +21,10 @@ module bus # (
     output logic            tx_pin,
 
     output logic [31:0]     data_out,
-    output mip_mie_csr_t    irq_p
+    output mip_mie_csr_t    irq_p,
+
+    output logic            done,
+    output logic            done_type
 );
 
     logic dmem_wr, mtimer_wr, irq_gen_wr, uart_wr;
@@ -43,6 +46,8 @@ module bus # (
 //------------------------------------------------------------------------------
 // Address Decoding
 //------------------------------------------------------------------------------
+    assign done = dmem_wr && address == 32'hCAFECAF0;
+    assign done_type = done && data_in == 32'd1;
 
     assign dmem_wr      = write_en && (bus_select == SEL_DMEM);
     assign dmem_rd      = read_en && (bus_select == SEL_DMEM);
@@ -89,19 +94,34 @@ module bus # (
 
     memory # (.NUM_WORDS(NUM_WORDS)) memory_inst (
         .clk            (clk),
-        .address_b      (imem_address),
+        .address_b      (imem_address >> 2),
         .data_out_b     (imem_data),
         .data_in_b      (32'd0),
         .write_b        (1'b0),
         .read_b         (imem_read),
         .byte_en_b      (4'b1111),
-        .address_a      (address),
+        .address_a      (address >> 2),
         .write_a        (dmem_wr),
         .read_a         (dmem_rd),
         .byte_en_a      (byte_en),
         .data_in_a      (data_in),
         .data_out_a     (dmem_out)
     );
+
+    // ram2port memory_inst (
+    //     .address_a      (address),
+	//     .address_b      (imem_address),
+	//     .byteena_a      (byte_en),
+	//     .clock          (clk),
+	//     .data_a         (data_in),
+	//     .data_b         (),
+	//     .wren_a         (dmem_wr),
+	//     .wren_b         (),
+    //     .rden_a         (dmem_rd),
+    //     .rden_b         (imem_read),
+	//     .q_a            (dmem_out),
+	//     .q_b            (imem_data)
+    // );
 
     simple_irq_gen irq_gen_inst (
         .clk            (clk),

@@ -9,7 +9,10 @@ module core # (
     input logic rst_n,
     input logic rx_pin,
 
-    output logic tx_pin
+    output logic tx_pin,
+    output logic [31:0] instruction_out,
+    output logic done,
+    output logic done_type
 );
 
     // Pipeline structs
@@ -22,6 +25,8 @@ module core # (
     logic [31:0]    pc, pc_next, pc_target_ex, pc_target_wb;
     logic [31:0]    instruction;
     pc_src_e        pc_src_ex;
+
+    assign instruction_out = instruction;
 
     // Register file
     logic [31:0]    rs1_data, rs2_data;
@@ -83,7 +88,9 @@ module core # (
         .irq_p          (irq_p),
         .read_en        (mem_read),
         .rx_pin         (rx_pin),
-        .tx_pin         (tx_pin)
+        .tx_pin         (tx_pin),
+        .done           (done),
+        .done_type      (done_type)
     );
 
     register_file regfile_inst (

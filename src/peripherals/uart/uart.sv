@@ -110,7 +110,7 @@ module uart # (
     assign baud_16x_ce  = (div_cnt == (divisor - 1'b1));
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) div_cnt <= '0;
+        if (!rst_n) div_cnt <= 16'd27; // 115200 baud at 50MHz
         else        div_cnt <= next_div_cnt;
     end
 

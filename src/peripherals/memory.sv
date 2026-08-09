@@ -20,6 +20,7 @@ module memory # (
 );
 
     logic [3:0][7:0] memory[0:NUM_WORDS-1];
+    initial $readmemh("ExceptionsSm-00.hex", memory);
 
     always_ff @(posedge clk) begin
         if (write_a) begin
