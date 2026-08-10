@@ -10,7 +10,6 @@ module core # (
     input logic rx_pin,
 
     output logic tx_pin,
-    output logic [31:0] instruction_out,
     output logic done,
     output logic done_type
 );
@@ -23,10 +22,8 @@ module core # (
 
     // PC
     logic [31:0]    pc, pc_next, pc_target_ex, pc_target_wb;
-    logic [31:0]    instruction;
+    logic [31:0]    instruction_direct, instruction_stalled, instruction;
     pc_src_e        pc_src_ex;
-
-    assign instruction_out = instruction;
 
     // Register file
     logic [31:0]    rs1_data, rs2_data;
@@ -69,6 +66,22 @@ module core # (
         .data_out       (pc)
     );
 
+    logic use_stalled;
+
+    assign instruction = use_stalled ? instruction_stalled : instruction_direct;
+
+    always_ff @(posedge clk) begin
+        if (stall_if_id) begin
+            instruction_stalled <= instruction_direct;
+            use_stalled <= 1'b1;
+        end else if (flush_if_id) begin
+            instruction_stalled <= '0;
+            use_stalled <= 1'b1;
+        end else begin
+            use_stalled <= 1'b0;
+        end
+    end
+
 //------------------------------------------------------------------------------
 // Memories
 //------------------------------------------------------------------------------
@@ -78,7 +91,7 @@ module core # (
         .rst_n          (rst_n),
 
         .imem_address   (pc),
-        .imem_data      (instruction),
+        .imem_data      (instruction_direct),
         .imem_read      (!stall_if_id && !flush_if_id),
         .address        (dmem_addr),
         .data_in        (mem_write_data),

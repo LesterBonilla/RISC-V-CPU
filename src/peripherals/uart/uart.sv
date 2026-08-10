@@ -73,7 +73,7 @@ module uart # (
             interrupt_enable    <= 8'd0;
             fifo_control        <= 8'd1; // Always enable fifo mode
             line_control        <= 8'd3; // Default: 8 data, 1 stop, no parity
-            divisor             <= 16'd1;// Avoid zero divisor
+            divisor             <= 16'd27; // Default 115,000 baud at 50MHz
             scratch             <= 8'd0;
             data_out            <= 8'd0;
         end else if (write_en) begin
@@ -110,7 +110,7 @@ module uart # (
     assign baud_16x_ce  = (div_cnt == (divisor - 1'b1));
 
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) div_cnt <= 16'd27; // 115200 baud at 50MHz
+        if (!rst_n) div_cnt <= 16'd0;
         else        div_cnt <= next_div_cnt;
     end
 
