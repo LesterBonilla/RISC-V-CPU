@@ -8,10 +8,7 @@ module core # (
     input logic clk,
     input logic rst_n,
     input logic rx_pin,
-
     output logic tx_pin,
-    output logic done,
-    output logic done_type
 );
 
     // Pipeline structs
@@ -102,8 +99,6 @@ module core # (
         .read_en        (mem_read),
         .rx_pin         (rx_pin),
         .tx_pin         (tx_pin),
-        .done           (done),
-        .done_type      (done_type)
     );
 
     register_file regfile_inst (

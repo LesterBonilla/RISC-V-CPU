@@ -22,9 +22,6 @@ module bus # (
 
     output logic [31:0]     data_out,
     output mip_mie_csr_t    irq_p,
-
-    output logic            done,
-    output logic            done_type
 );
 
     logic dmem_wr, mtimer_wr, irq_gen_wr, uart_wr;
@@ -46,16 +43,6 @@ module bus # (
 //------------------------------------------------------------------------------
 // Address Decoding
 //------------------------------------------------------------------------------
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            done <= '0;
-            done_type <= '0;
-        end else if ((write_en && (address == 32'hCAFE0000))) begin
-            done <= 1'b1;
-            done_type <= (data_in == 32'd1);
-        end
-    end
-
     assign dmem_wr      = write_en && (bus_select == SEL_DMEM);
     assign dmem_rd      = read_en && (bus_select == SEL_DMEM);
     assign mtimer_wr    = write_en && (bus_select == SEL_MTIMER);

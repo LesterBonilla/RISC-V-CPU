@@ -3,8 +3,6 @@ module de10lite_top(
     input logic rst_n,
     input logic rx_pin,
     output logic tx_pin,
-    output logic done,
-    output logic done_type
 );
 
 //------------------------------------------------------------------------------
@@ -27,8 +25,6 @@ module de10lite_top(
         .rst_n  (rst_n && locked),
         .rx_pin (rx_pin),
         .tx_pin (tx_pin),
-        .done   (done),
-        .done_type (done_type)
     );
 
 endmodule
