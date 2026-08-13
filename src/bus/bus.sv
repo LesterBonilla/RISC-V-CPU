@@ -21,7 +21,7 @@ module bus # (
     output logic            tx_pin,
 
     output logic [31:0]     data_out,
-    output mip_mie_csr_t    irq_p,
+    output mip_mie_csr_t    irq_p
 );
 
     logic dmem_wr, mtimer_wr, irq_gen_wr, uart_wr;

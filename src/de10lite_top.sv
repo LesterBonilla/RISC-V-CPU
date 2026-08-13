@@ -2,7 +2,7 @@ module de10lite_top(
     input logic clk50MHz,
     input logic rst_n,
     input logic rx_pin,
-    output logic tx_pin,
+    output logic tx_pin
 );
 
 //------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ module de10lite_top(
         .clk    (core_clk),
         .rst_n  (rst_n && locked),
         .rx_pin (rx_pin),
-        .tx_pin (tx_pin),
+        .tx_pin (tx_pin)
     );
 
 endmodule
