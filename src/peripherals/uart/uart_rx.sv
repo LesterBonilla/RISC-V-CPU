@@ -80,8 +80,8 @@ module uart_rx #(
     // Rx Clock Enables
     //--------------------------------------------------------------------------
     
-    assign tick_1x_rx = (bit_div_cnt_rx == 4'd15);
-    assign rx_mid_bit = (bit_div_cnt_rx == 4'd7);
+    assign tick_1x_rx = (bit_div_cnt_rx == 4'd15 && tick_16x);
+    assign rx_mid_bit = (bit_div_cnt_rx == 4'd7 && tick_16x);
 
     always_comb begin
         next_bit_div_cnt_rx = bit_div_cnt_rx;
@@ -122,7 +122,7 @@ module uart_rx #(
     // Valid start bit == 0
     // Valid stop bit == 1
     
-    assign start_bit_edge   = ((rx_state == UART_IDLE || rx_state == UART_BREAK) && rx_falling_edge);
+    assign start_bit_edge   = ((rx_state == UART_IDLE || rx_state == UART_BREAK || rx_state == UART_FRAME_END) && rx_falling_edge);
     assign break_cond       = ((rx_state == UART_FRAME_END) && !stop_bit && !start_bit && (formatted_data == 8'd0));
 
     always_comb begin
@@ -134,7 +134,7 @@ module uart_rx #(
             UART_DATA:      if (tick_1x_rx && rx_data_done)             next_rx_state = UART_STOP;
             UART_PARITY:    if (tick_1x_rx)                             next_rx_state = UART_STOP; 
             UART_STOP:      if (tick_1x_rx)                             next_rx_state = UART_FRAME_END;
-            UART_FRAME_END: if (tick_1x_rx && stop_bit && !start_bit)   next_rx_state = UART_DATA;
+            UART_FRAME_END: if (stop_bit && start_bit_edge)             next_rx_state = UART_START;
                             else if (tick_1x_rx && break_cond)          next_rx_state = UART_BREAK;
                             else if (tick_1x_rx)                        next_rx_state = UART_IDLE;
             UART_BREAK:     if (start_bit_edge)                         next_rx_state = UART_START;
@@ -165,7 +165,7 @@ module uart_rx #(
         next_rx_bit_idx = rx_bit_idx;
 
         if (tick_1x_rx) begin
-            if (next_rx_state == UART_DATA) next_rx_bit_idx = '0;
+            if (rx_state == UART_STOP) next_rx_bit_idx = '0;
             else if (rx_state == UART_DATA) next_rx_bit_idx = rx_bit_idx + 1'b1;
         end
     end
@@ -215,7 +215,7 @@ module uart_rx #(
     // Error Checking and FIFO Data
     //--------------------------------------------------------------------------
 
-    assign rx_frame_done        = (rx_state == UART_FRAME_END && tick_1x_rx);
+    assign rx_frame_done        = (rx_state == UART_FRAME_END && (tick_1x_rx || start_bit_edge));
     assign rx_fifo_wr_en        = (rx_frame_done);
 
     assign rx_data_out          = rx_fifo_entry_out.data;
