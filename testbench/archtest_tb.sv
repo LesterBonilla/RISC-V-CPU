@@ -9,7 +9,7 @@ module archtest_tb;
 //------------------------------------------------------------------------------
     logic clk, rst_n, tx_pin, rx_pin;
 
-    core # (.MEM_SIZE_WORDS(1024*256)) dut (
+    core # (.MEM_SIZE_WORDS(1024*256), .INITIAL_PC('0)) dut (
         .clk    (clk),
         .rst_n  (rst_n),
         .tx_pin (tx_pin),

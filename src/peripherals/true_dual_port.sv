@@ -1,6 +1,6 @@
 module true_dual_port # (
     parameter int NUM_WORDS = 1024,
-    parameter LOAD_MEM = 0
+    parameter string MEM_FILE = ""
 )(
     input  logic            clk,
 
@@ -19,7 +19,7 @@ module true_dual_port # (
 );
 
     logic [3:0][7:0] memory[0:NUM_WORDS-1];
-    initial if (LOAD_MEM == 1) $readmemh("ExceptionsSm-00.hex", memory);
+    initial if (MEM_FILE != "") $readmemh(MEM_FILE, memory);
 
     logic [31:0] data_a, data_b;
     logic [$clog2(NUM_WORDS)-1:0] word_address_a, word_address_b;

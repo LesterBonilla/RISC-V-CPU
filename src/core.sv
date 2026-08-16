@@ -3,7 +3,8 @@ import pipeline_pkg::*;
 import csr_pkg::*;
 
 module core # (
-    parameter int MEM_SIZE_WORDS = 1024
+    parameter int MEM_SIZE_WORDS = 1024,
+    parameter logic [31:0] INITIAL_PC = 32'hFFFFF000
 )(
     input logic clk,
     input logic rst_n,
@@ -54,7 +55,7 @@ module core # (
 // Program Counter
 //------------------------------------------------------------------------------
 
-    pipeline_register # (.WIDTH($bits(pc)), .INITIAL_VALUE(32'hFFFFF000)) pc_reg_inst (
+    pipeline_register # (.WIDTH($bits(pc)), .INITIAL_VALUE(INITIAL_PC)) pc_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (stall_pc_if),

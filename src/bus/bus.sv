@@ -117,7 +117,7 @@ module bus # (
         .data_out_a     (dmem_out)
     );
 
-    true_dual_port # (.NUM_WORDS(1024*4), .LOAD_MEM(1)) boot_inst (
+    true_dual_port # (.NUM_WORDS(1024*4), .MEM_FILE("../linker/boot.hex")) boot_inst (
         .clk            (clk),
         .address_a      (address - 32'hFFFFF000),
         .write_a        (boot_wr),
