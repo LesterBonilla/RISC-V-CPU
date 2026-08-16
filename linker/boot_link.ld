@@ -2,36 +2,37 @@ ENTRY(_start)
 
 MEMORY
 {
-    RAM (rwx) : ORIGIN = 0x00000000, LENGTH = 4K
+    BOOT (rwx) : ORIGIN = 0xFFFFF000, LENGTH = 4K
 }
 
 SECTIONS
 {
     .text :
     {
-        *(.text.start)
+        *(.text.init)
         *(.text)
-    } > RAM
+    } > BOOT
 
     .rodata :
     {
         *(.rodata*)
-    } > RAM
+    } > BOOT
 
     .data : 
     {
         _data_start = .;
         *(.data*)
         _data_end = .;
-    } > RAM
+    } > BOOT
 
     .bss : 
     {
-        _bss_start_ = .;
+        _bss_start = .;
         *(.bss*)
         *(COMMON)
         _bss_end = .;
-    } > RAM
+    } > BOOT
 
-    _stack_top = ORIGIN(RAM) + LENGTH(RAM);
+    . = ALIGN(4);
+    _boot_stack_top = ORIGIN(BOOT) + LENGTH(BOOT) - 4;
 }
