@@ -1,0 +1,2 @@
+riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -nostartfiles -o boot.elf bootloader.s -T boot_link.ld
+uv run elf2hex.py ../linker/boot.elf ../linker/boot.hex
