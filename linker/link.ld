@@ -2,8 +2,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    IMEM (rx) : ORIGIN = 0x00000000, LENGTH = 1K
-    DMEM (rw) : ORIGIN = 0x00000000, LENGTH = 1K 
+    RAM (rwx) : ORIGIN = 0x00000000, LENGTH = 4K
 }
 
 SECTIONS
@@ -12,19 +11,19 @@ SECTIONS
     {
         *(.text.start)
         *(.text)
-    } > IMEM
+    } > RAM
 
     .rodata :
     {
         *(.rodata*)
-    } > DMEM
+    } > RAM
 
     .data : 
     {
         _data_start = .;
         *(.data*)
         _data_end = .;
-    } > DMEM
+    } > RAM
 
     .bss : 
     {
@@ -32,7 +31,7 @@ SECTIONS
         *(.bss*)
         *(COMMON)
         _bss_end = .;
-    } > DMEM
+    } > RAM
 
-    _stack_top = ORIGIN(DMEM) + LENGTH(DMEM);
+    _stack_top = ORIGIN(RAM) + LENGTH(RAM);
 }
