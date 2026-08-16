@@ -1,5 +1,6 @@
 module pipeline_register #(
-    parameter int WIDTH = 32
+    parameter int WIDTH = 32,
+    parameter logic [WIDTH-1:0] INITIAL_VALUE = '0
 )(
     input logic clk,
     input logic rst_n,
@@ -12,7 +13,7 @@ module pipeline_register #(
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            data_out <= '0;
+            data_out <= INITIAL_VALUE;
             
         end else if (flush) begin
             data_out <= '0;

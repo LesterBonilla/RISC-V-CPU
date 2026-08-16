@@ -10,7 +10,9 @@ This project implements an in-order 5-stage RV32I processor in SystemVerilog. Th
 - RV32I ISA
 - Zicsr
 - M-mode (CSRs, interrupts, and exceptions)
-- Passed the RISC-V Architectural Compliance Tests (ACTs) for implemented extensions
+- Passing the RISC-V Architectural Compliance Tests (ACTs) for implemented extensions
+- UART module with bootloader for programming hardware
+- Tests passing on DE10-Lite development board with UART output
 
 ## Architecture
 

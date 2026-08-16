@@ -103,6 +103,7 @@ package pipeline_pkg;
         // Control signals
         logic               reg_write;
         wb_src_e            wb_src;
+        load_op_e           load_op;
 
         // Zicsr Extension
         csr_op_e            csr_op;

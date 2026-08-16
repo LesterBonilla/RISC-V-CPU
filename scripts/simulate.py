@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import subprocess
 import argparse
+import sys
 from generate_sv_header import generate_header
 
 
@@ -68,7 +69,7 @@ def build_arch_tests(
 
     print(f"Config:\t\t{str(config_file.relative_to(PROJECT_ROOT))}")
     print(f"Workdir:\t{str(workdir.relative_to(PROJECT_ROOT))}")
-    print(f"Debug:\t\t{"No" if debug else "Yes"}")
+    print(f"Debug:\t\t{"Yes" if debug else "No"}")
     print(f"Extensions:\t{"All" if extensions is None else ",".join(extensions)}")
     print(f"Jobs:\t\t{jobs}\n")
 
@@ -232,7 +233,9 @@ def main():
 
     # Build the elfs from riscv-arch-tests repo. They are placed in WORKDIR
     print("=== Building RISC-V Arch Tests ===")
-    build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
+    error = build_arch_tests(config_file=CONFIG_FILE, workdir=WORKDIR, debug=args.debug, extensions=extensions)
+    if (error):
+        sys.exit(1)
 
     # Find the requested elfs, convert them to hex. 
     print("\n=== Converting ELF -> HEX ===")

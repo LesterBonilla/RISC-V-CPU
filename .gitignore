@@ -1,3 +1,4 @@
-quartus
+quartus/*
+!quartus/core.qar
 __pycache__
 build

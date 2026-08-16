@@ -5,6 +5,7 @@ import csr_pkg::*;
 module id_stage (
     input   if_id_reg_t     if_id,
 
+    input   logic [31:0]    instruction,
     input   logic [31:0]    rs1_data,
     input   logic [31:0]    rs2_data,
 
@@ -24,24 +25,23 @@ module id_stage (
     csr_op_e        csr_op;
     priv_op_e       priv_op;
 
-    assign opcode   = opcode_e'(if_id.instruction[6:0]);
+    assign opcode   = (if_id.valid) ? opcode_e'(instruction[6:0]) : OP_BUBBLE;
     assign csr_op   = csr_op_e'(funct3);
     assign priv_op  = priv_op_e'(funct12);
     assign is_shift = (funct3 == 3'b001) || (funct3 == 3'b101);
 
-    assign rs1_addr = if_id.instruction[19:15];
-    assign rs2_addr = if_id.instruction[24:20];
-    assign rd_addr  = if_id.instruction[11:7];
-    assign funct7   = if_id.instruction[31:25];
-    assign funct3   = if_id.instruction[14:12];
-    assign funct12  = if_id.instruction[31:20];
+    assign rs1_addr = instruction[19:15];
+    assign rs2_addr = instruction[24:20];
+    assign rd_addr  = instruction[11:7];
+    assign funct7   = instruction[31:25];
+    assign funct3   = instruction[14:12];
+    assign funct12  = instruction[31:20];
 
-    assign imm_I    = {{20{if_id.instruction[31]}}, if_id.instruction[31:20]};
-    assign imm_S    = {{20{if_id.instruction[31]}}, if_id.instruction[31:25], if_id.instruction[11:7]};
-    assign imm_U    = {if_id.instruction[31:12], {12{1'b0}}};
-    assign imm_B    = {{20{if_id.instruction[31]}}, if_id.instruction[7], if_id.instruction[30:25], if_id.instruction[11:8], 1'b0};
-    assign imm_J    = {{12{if_id.instruction[31]}}, if_id.instruction[19:12], if_id.instruction[20], if_id.instruction[30:25], if_id.instruction[24:21], 1'b0};
-
+    assign imm_I    = {{20{instruction[31]}}, instruction[31:20]};
+    assign imm_S    = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+    assign imm_U    = {instruction[31:12], {12{1'b0}}};
+    assign imm_B    = {{20{instruction[31]}}, instruction[7], instruction[30:25], instruction[11:8], 1'b0};
+    assign imm_J    = {{12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:25], instruction[24:21], 1'b0};
 
     always_comb begin
 
@@ -66,9 +66,6 @@ module id_stage (
         id_ex.opcode        = opcode;
 
         unique case (opcode)
-//------------------------------------------------------------------------------
-// RV32I Base
-//------------------------------------------------------------------------------
             OP_REG_REG: begin
                 id_ex.alu_op        = alu_op_e'({funct7[5], funct3});
                 id_ex.alu_src_a     = ALU_SRC_A_REG;

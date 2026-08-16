@@ -20,5 +20,5 @@ alias recompile "do $env(SCRIPT_DIR)/run_gui.do"
 
 catch {quit -sim}
 do compile.do
-vsim -voptargs="+acc" -lib $env(SIM_WORKDIR) $env(TB_TOP)
+vsim -quiet -voptargs="+acc" -lib $env(SIM_WORKDIR) $env(TB_TOP)
 do wave.do

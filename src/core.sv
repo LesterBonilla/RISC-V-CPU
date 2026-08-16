@@ -3,10 +3,13 @@ import pipeline_pkg::*;
 import csr_pkg::*;
 
 module core # (
-    parameter int MEM_SIZE_WORDS = 1024
+    parameter int MEM_SIZE_WORDS = 1024,
+    parameter logic [31:0] INITIAL_PC = 32'hFFFFF000
 )(
     input logic clk,
-    input logic rst_n
+    input logic rst_n,
+    input logic rx_pin,
+    output logic tx_pin
 );
 
     // Pipeline structs
@@ -17,7 +20,7 @@ module core # (
 
     // PC
     logic [31:0]    pc, pc_next, pc_target_ex, pc_target_wb;
-    logic [31:0]    instruction;
+    logic [31:0]    instruction_direct, instruction_stalled, instruction;
     pc_src_e        pc_src_ex;
 
     // Register file
@@ -28,7 +31,7 @@ module core # (
     // Data memory
     logic [31:0]    mem_write_data, dmem_addr, mem_read_data;
     logic [3:0]     byte_en;
-    logic           mem_write;
+    logic           mem_write, mem_read;
 
     // Hazard control
     logic [31:0]    fwd_data_mem, wb_result;
@@ -52,7 +55,7 @@ module core # (
 // Program Counter
 //------------------------------------------------------------------------------
 
-    pipeline_register # (.WIDTH($bits(pc))) pc_reg_inst (
+    pipeline_register # (.WIDTH($bits(pc)), .INITIAL_VALUE(INITIAL_PC)) pc_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (stall_pc_if),
@@ -60,6 +63,22 @@ module core # (
         .data_in        (pc_next),
         .data_out       (pc)
     );
+
+    logic use_stalled;
+
+    assign instruction = use_stalled ? instruction_stalled : instruction_direct;
+
+    always_ff @(posedge clk) begin
+        if (stall_if_id) begin
+            instruction_stalled <= instruction_direct;
+            use_stalled <= 1'b1;
+        end else if (flush_if_id) begin
+            instruction_stalled <= '0;
+            use_stalled <= 1'b1;
+        end else begin
+            use_stalled <= 1'b0;
+        end
+    end
 
 //------------------------------------------------------------------------------
 // Memories
@@ -70,13 +89,17 @@ module core # (
         .rst_n          (rst_n),
 
         .imem_address   (pc),
-        .imem_data      (instruction),
+        .imem_data      (instruction_direct),
+        .imem_read      (!stall_if_id && !flush_if_id),
         .address        (dmem_addr),
         .data_in        (mem_write_data),
         .byte_en        (byte_en),
         .write_en       (mem_write),
         .data_out       (mem_read_data),
-        .irq_p          (irq_p)
+        .irq_p          (irq_p),
+        .read_en        (mem_read),
+        .rx_pin         (rx_pin),
+        .tx_pin         (tx_pin)
     );
 
     register_file regfile_inst (
@@ -156,7 +179,6 @@ module core # (
     if_stage if_inst (
         .pc             (pc),
         .pc_target_ex   (pc_target_ex),
-        .instruction    (instruction),
         .pc_src_ex      (pc_src_ex),
 
         .redirect_wb    (redirect_wb),
@@ -168,6 +190,7 @@ module core # (
 
     id_stage id_inst (
         .if_id          (if_id),
+        .instruction    (instruction),
         .rs1_data       (rs1_data),
         .rs2_data       (rs2_data),
 
@@ -190,11 +213,11 @@ module core # (
 
     mem_stage mem_inst (
         .ex_mem         (ex_mem),
-        .mem_data       (mem_read_data),
 
         .redirect_wb    (redirect_wb),
 
         .mem_write      (mem_write),
+        .mem_read       (mem_read),
         .byte_en        (byte_en),
         .write_data     (mem_write_data),
         .mem_address    (dmem_addr),
@@ -204,6 +227,7 @@ module core # (
 
     wb_stage wb_inst (
         .mem_wb         (mem_wb),
+        .mem_read_data  (mem_read_data),
 
         .reg_write      (reg_write),
         .rd_addr        (rd_addr),
