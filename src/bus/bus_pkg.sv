@@ -13,6 +13,9 @@ package bus_pkg;
     localparam UART_BASE_ADDR       = 32'h10000000;
     localparam UART_SIZE            = 32'h00001000;
 
+    localparam BOOT_BASE_ADDR       = 32'hFFFFF000;
+    localparam BOOT_SIZE            = 32'h00001000;
+
     typedef struct packed { 
         logic [31:0] base;
         logic [31:0] size;
@@ -23,7 +26,8 @@ package bus_pkg;
         SEL_DMEM,
         SEL_IRQGEN,
         SEL_MTIMER,
-        SEL_UART        
+        SEL_UART,
+        SEL_BOOT 
     } bus_sel_e;
 
     localparam mem_region_t DMEM_REGION     = '{base: DMEM_BASE_ADDR, size: DMEM_SIZE};
@@ -31,6 +35,7 @@ package bus_pkg;
     localparam mem_region_t MTIMER_REGION   = '{base: MTIMER_BASE_ADDR, size: MTIMER_SIZE};
     localparam mem_region_t UART_REGION     = '{base: UART_BASE_ADDR, size: UART_SIZE};
     localparam mem_region_t MSIP_REGION     = '{base: MSIP_BASE_ADDR, size: MSIP_SIZE};
+    localparam mem_region_t BOOT_REGION     = '{base: BOOT_BASE_ADDR, size: BOOT_SIZE};
 
     function automatic logic region_en(mem_region_t region, logic [31:0] address);
         return (address & ~(region.size - 1)) == region.base;

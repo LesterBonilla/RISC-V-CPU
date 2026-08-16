@@ -54,7 +54,7 @@ module core # (
 // Program Counter
 //------------------------------------------------------------------------------
 
-    pipeline_register # (.WIDTH($bits(pc))) pc_reg_inst (
+    pipeline_register # (.WIDTH($bits(pc)), .INITIAL_VALUE(32'hFFFFF000)) pc_reg_inst (
         .clk            (clk),
         .rst_n          (rst_n),
         .stall          (stall_pc_if),
