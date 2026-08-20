@@ -1,7 +1,6 @@
-module interconnect 
 import interconnect_pkg::*; 
 import map_pkg::*;
-(
+module interconnect (
     input   logic               clk,
     input   logic               rst_n,
     input   axi_manager_t       manager_request[NUM_MANAGERS],
@@ -11,52 +10,145 @@ import map_pkg::*;
 );
 
     owner_e ram_owner, boot_owner;
-    subordinates_e aw_req[NUM_MANAGERS], ar_req[NUM_MANAGERS];
-    subordinates_e imem_B_sel_r, imem_R_sel_r, dmem_B_sel_r, dmem_R_sel_r;
-    subordinates_e imem_B_sel_next, imem_R_sel_next, dmem_B_sel_next, dmem_R_sel_next;
+    subordinates_e  aw_req[NUM_MANAGERS], ar_req[NUM_MANAGERS];
+    managers_e      aw_grant[NUM_SUBORDINATES], ar_grant[NUM_SUBORDINATES];
+    managers_e      b_owner_r[NUM_SUBORDINATES], r_owner_r[NUM_SUBORDINATES];
+    managers_e      next_b_owner[NUM_SUBORDINATES], next_r_owner[NUM_SUBORDINATES];
 
 //------------------------------------------------------------------------------
 // Address Decode
 //------------------------------------------------------------------------------
-    assign imem_AW_sel = decode_address(manager_request[MANAGER_IMEM].AW.AWADDR);
-    assign imem_AR_sel = decode_address(manager_request[MANAGER_IMEM].AR.ARADDR);
-    assign dmem_AW_sel = decode_address(manager_request[MANAGER_DMEM].AW.AWADDR);
-    assign dmem_AR_sel = decode_address(manager_request[MANAGER_DMEM].AR.ARADDR);
-
+    always_comb begin
+        for (int m = 0; m < NUM_MANAGERS; ++m) begin
+            aw_req[m] = decode_address(manager_request[m].AW.AWADDR);
+            ar_req[m] = decode_address(manager_request[m].AR.ARADDR);
+        end
+    end
 //------------------------------------------------------------------------------
 // Shared Resource Arbitration
 //------------------------------------------------------------------------------
-
-
-//------------------------------------------------------------------------------
-// Connection Muxing
-//------------------------------------------------------------------------------   
     always_comb begin
-        subordinate_request = '0;
+        // Fixed priority arbiter for now, will update to round robin once this is working
+        // For each subordinate, check if a manager is requesting access.
+        // The first manager to request access gets the grant, the loop breaks and the
+        // next subordinate is checked.
+        // Check ar and aw separately. Separate managers can access the same channel of
+        // different subordinates or different channels of the same subordinate.
+        ar_grant = '{default:'0};
+        aw_grant = '{default:'0};
 
-        subordinate_request[imem_AW_sel].AW = manager_request[MANAGER_IMEM].AW;
-        subordinate_request[imem_AR_sel].AR = manager_request[MANAGER_IMEM].AR;
-    end
+        for (int s = 0; s < NUM_SUBORDINATES; s++) begin
+            for (int m = 0; m < NUM_MANAGERS; m++) begin
+                if (ar_req[m] == subordinates_e'(s)) begin
+                    ar_grant[s] = managers_e'(m);
+                    break;
+                end
+            end
+        end
 
-//------------------------------------------------------------------------------
-// Check Handshakes
-//------------------------------------------------------------------------------  
-    assign imem_R_sel_next = (check_ar_handshake(.manager(MANAGER_IMEM), .subordinate(imem_AR_sel))) ?
-                             imem_AR_sel : SEL_NONE;
-
-    assign imem_B_sel_next = (check_aw_handshake(.manager(MANAGER_IMEM), .subordinate(imem_AW_sel))) ?
-                             imem_AW_sel : SEL_NONE;
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if !(rst_n) begin
-            imem_B_sel_r <= SEL_NONE;
-            imem_R_sel_r <= SEL_NONE;
-        end else begin
-            imem_B_sel_r <= imem_B_sel_next;
-            imem_R_sel_r <= imem_R_sel_next;
+        for (int s = 0; s < NUM_SUBORDINATES; s++) begin
+            for (int m = 0; m < NUM_MANAGERS; m++) begin
+                if (aw_req[m] == subordinates_e'(s)) begin
+                    aw_grant[s] = managers_e'(m);
+                    break;
+                end
+            end
         end
     end
 
+//------------------------------------------------------------------------------
+// Request Muxing
+//------------------------------------------------------------------------------   
+    always_comb begin
+        subordinate_request = '{default:'0};
+
+        for (int s = 0; s < NUM_SUBORDINATES; s++) begin
+            if (aw_grant[s] != MANAGER_NONE) begin
+                subordinate_request[s].AW   = manager_request[aw_grant[s]].AW;
+                subordinate_request[s].W    = manager_request[aw_grant[s]].W;
+            end
+            if (ar_grant[s] != MANAGER_NONE) begin
+                subordinate_request[s].AR   = manager_request[ar_grant[s]].AR;
+            end
+        end
+    end
+
+//------------------------------------------------------------------------------
+// Handshakes and Assigning Response Grants
+//------------------------------------------------------------------------------  
+    always_comb begin
+        next_b_owner = b_owner_r;
+        next_r_owner = r_owner_r;
+
+        // Each manager only does one read/write transaction at a time.
+        // If AWVALID or ARVALID are set, the manager received the previous response it was
+        // waiting for and is ready to start another transaction.
+        // Later, support will be added for multiple transactions on each of read/write.
+        // This will let the manager start a read from RAM and start a read from UART and get them
+        // out of order. This will require IDs and keeping track of which ID routes back to which manager.
+        // The simple case here is that IMEM only needs RAM access. DMEM is the only manager that
+        // accesses peripherals. I'll try to generalize it so I can add a second master and not need to
+        // redo anything. For now, DMEM will need to wait for a RAM completion before starting a UART transaciton.
+        // A table can be kept that matches IDs to managers. When a subordinate asserts RVALID/BVALID, the ID
+        // is used to connect the response channels. The table would be iterated, and the first match would be
+        // connected to the manager and poped when RREADY/BREADY accepts the response.
+        // For now W and AW are tightly coupled.
+        for (int s = 0; s < NUM_SUBORDINATES; s++) begin
+            for (int m = 0; m < NUM_MANAGERS; m++) begin
+                // Clear response_owner when response is handshaked. In that same cycle, a response handshake
+                // can occur, so it will update the next_x_owner.
+                if (b_owner_r[s] == managers_e'(m)) begin
+                    if (check_b_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                        next_b_owner[s] = MANAGER_NONE;
+                    end
+                    if (check_aw_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                        if (check_w_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                            next_b_owner[s] = managers_e'(m);
+                        end
+                    end
+                end
+
+                if (r_owner_r[s] == managers_e'(m)) begin
+                    if (check_r_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                        next_r_owner[s] = MANAGER_NONE;
+                    end
+                    if (check_ar_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                        next_r_owner[s] = managers_e'(m);
+                end
+                end
+            end
+        end
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            b_owner_r <= '{default:'0};
+            r_owner_r <= '{default:'0};
+        end else begin
+            b_owner_r <= next_b_owner;
+            r_owner_r <= next_r_owner;
+        end
+    end
+
+//------------------------------------------------------------------------------
+// Response Muxing
+//------------------------------------------------------------------------------  
+    always_comb begin
+        manager_response = '{default:'0};
+
+        for (int s = 0; s < NUM_SUBORDINATES; s++) begin
+            if (b_owner_r[s] != MANAGER_NONE) begin
+                manager_response[b_owner_r[s]].B = subordinate_response[s].B;
+            end
+            if (r_owner_r[s] != MANAGER_NONE) begin
+                manager_response[r_owner_r[s]].R = subordinate_response[s].R;
+            end
+        end
+    end
+
+//------------------------------------------------------------------------------
+// Functions
+//------------------------------------------------------------------------------  
     function automatic logic check_aw_handshake(managers_e manager, subordinates_e subordinate);
         return (manager_request[manager].AW.AWVALID && subordinate_response[subordinate].AW.AWREADY);
     endfunction
@@ -64,4 +156,17 @@ import map_pkg::*;
     function automatic logic check_ar_handshake(managers_e manager, subordinates_e subordinate);
         return (manager_request[manager].AR.ARVALID && subordinate_response[subordinate].AR.ARREADY);
     endfunction
+
+    function automatic logic check_w_handshake(managers_e manager, subordinates_e subordinate);
+        return (manager_request[manager].W.WVALID && subordinate_response[subordinate].W.WREADY);
+    endfunction
+
+    function automatic logic check_b_handshake(managers_e manager, subordinates_e subordinate);
+        return (manager_request[manager].B.BREADY && subordinate_response[subordinate].B.BVALID);
+    endfunction
+
+    function automatic logic check_r_handshake(managers_e manager, subordinates_e subordinate);
+        return (manager_request[manager].R.RREADY && subordinate_response[subordinate].R.RVALID);
+    endfunction
+
 endmodule
