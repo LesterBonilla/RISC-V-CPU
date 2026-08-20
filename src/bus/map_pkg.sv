@@ -56,7 +56,7 @@ package map_pkg;
     localparam mem_region_t BOOT_REGION     = '{base: BOOT_BASE_ADDR, size: BOOT_SIZE};
 
     localparam int NUM_SUBORDINATES = 6 + 1; // +1 for SEL_NONE
-    localparam int NUM_MANAGERS = 2 + 1; // +1 for MANAGER_NONE
+    localparam int NUM_MANAGERS = 2;
 
     function automatic logic region_en(mem_region_t region, logic [31:0] address);
         logic [31:0] mask;
