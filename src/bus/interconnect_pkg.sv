@@ -92,4 +92,12 @@ package interconnect_pkg;
         logic [DATA_WIDTH-1:0]  RDATA;       
     } axi_subordinate_r_t;
 
+    typedef enum int {
+        AXI_CH_AW,
+        AXI_CH_W,
+        AXI_CH_B,
+        AXI_CH_AR,
+        AXI_CH_R
+    } axi_ch_e;
+
 endpackage : interconnect_pkg

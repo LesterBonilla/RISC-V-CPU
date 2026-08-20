@@ -34,13 +34,14 @@ module interconnect (
         // next subordinate is checked.
         // Check ar and aw separately. Separate managers can access the same channel of
         // different subordinates or different channels of the same subordinate.
+        // Use subordinates_e'(s+1) to skip SEL_NONE and MANAGER_NONE
         ar_grant = '{default:'0};
         aw_grant = '{default:'0};
 
         for (int s = 0; s < NUM_SUBORDINATES; s++) begin
             for (int m = 0; m < NUM_MANAGERS; m++) begin
-                if (ar_req[m] == subordinates_e'(s)) begin
-                    ar_grant[s] = managers_e'(m);
+                if (ar_req[m] == subordinates_e'(s+1)) begin
+                    ar_grant[s] = managers_e'(m+1);
                     break;
                 end
             end
@@ -48,8 +49,8 @@ module interconnect (
 
         for (int s = 0; s < NUM_SUBORDINATES; s++) begin
             for (int m = 0; m < NUM_MANAGERS; m++) begin
-                if (aw_req[m] == subordinates_e'(s)) begin
-                    aw_grant[s] = managers_e'(m);
+                if (aw_req[m] == subordinates_e'(s+1)) begin
+                    aw_grant[s] = managers_e'(m+1);
                     break;
                 end
             end
@@ -97,23 +98,23 @@ module interconnect (
             for (int m = 0; m < NUM_MANAGERS; m++) begin
                 // Clear response_owner when response is handshaked. In that same cycle, a response handshake
                 // can occur, so it will update the next_x_owner.
-                if (b_owner_r[s] == managers_e'(m)) begin
-                    if (check_b_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                if (b_owner_r[s] == managers_e'(m+1)) begin
+                    if (handshake(.ch(AXI_CH_B), .m(m), .s(s))) begin
                         next_b_owner[s] = MANAGER_NONE;
                     end
-                    if (check_aw_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
-                        if (check_w_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
-                            next_b_owner[s] = managers_e'(m);
+                    if (handshake(.ch(AXI_CH_AW), .m(m), .s(s))) begin
+                        if (handshake(.ch(AXI_CH_W), .m(m), .s(s))) begin
+                            next_b_owner[s] = managers_e'(m+1);
                         end
                     end
                 end
 
-                if (r_owner_r[s] == managers_e'(m)) begin
-                    if (check_r_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
+                if (r_owner_r[s] == managers_e'(m+1)) begin
+                    if (handshake(.ch(AXI_CH_R), .m(m), .s(s))) begin
                         next_r_owner[s] = MANAGER_NONE;
                     end
-                    if (check_ar_handshake(.manager(managers_e'(m)), .subordinate(subordinates_e'(s)))) begin
-                        next_r_owner[s] = managers_e'(m);
+                    if (handshake(.ch(AXI_CH_AR), .m(m), .s(s))) begin
+                        next_r_owner[s] = managers_e'(m+1);
                 end
                 end
             end
@@ -149,24 +150,15 @@ module interconnect (
 //------------------------------------------------------------------------------
 // Functions
 //------------------------------------------------------------------------------  
-    function automatic logic check_aw_handshake(managers_e manager, subordinates_e subordinate);
-        return (manager_request[manager].AW.AWVALID && subordinate_response[subordinate].AW.AWREADY);
-    endfunction
-
-    function automatic logic check_ar_handshake(managers_e manager, subordinates_e subordinate);
-        return (manager_request[manager].AR.ARVALID && subordinate_response[subordinate].AR.ARREADY);
-    endfunction
-
-    function automatic logic check_w_handshake(managers_e manager, subordinates_e subordinate);
-        return (manager_request[manager].W.WVALID && subordinate_response[subordinate].W.WREADY);
-    endfunction
-
-    function automatic logic check_b_handshake(managers_e manager, subordinates_e subordinate);
-        return (manager_request[manager].B.BREADY && subordinate_response[subordinate].B.BVALID);
-    endfunction
-
-    function automatic logic check_r_handshake(managers_e manager, subordinates_e subordinate);
-        return (manager_request[manager].R.RREADY && subordinate_response[subordinate].R.RVALID);
+    function automatic logic handshake(axi_ch_e ch, int unsigned m, int unsigned s);
+        case (ch)
+            AXI_CH_AW:  return manager_request[m].AW.AWVALID & subordinate_response[s].AW.AWREADY;
+            AXI_CH_W:   return manager_request[m].W.WVALID   & subordinate_response[s].W.WREADY;
+            AXI_CH_B:   return manager_request[m].B.BREADY   & subordinate_response[s].B.BVALID;
+            AXI_CH_AR:  return manager_request[m].AR.ARVALID & subordinate_response[s].AR.ARREADY;
+            AXI_CH_R:   return manager_request[m].R.RREADY   & subordinate_response[s].R.RVALID;
+            default:    return 1'b0;
+        endcase
     endfunction
 
 endmodule
